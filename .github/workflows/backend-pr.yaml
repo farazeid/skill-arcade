@@ -35,16 +35,15 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          export IMAGE_NAME="europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/skill-arcade-backend:pr-${{ github.event.pull_request.number }}"
-          docker build -t $IMAGE_NAME .
-          docker push $IMAGE_NAME
+          docker build -t "europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }}" .
+          docker push "europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }}"
         working-directory: ./backend
 
       - name: Deploy to Cloud Run for Preview
         id: deploy
         run: |
           gcloud run deploy skill-arcade-backend-pr-${{ github.event.pull_request.number }} \
-            --image="europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/skill-arcade-backend:pr-${{ github.event.pull_request.number }}" \
+            --image="europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }}" \
             --region=europe-west2 \
             --platform=managed \
             --allow-unauthenticated \
@@ -97,6 +96,6 @@ jobs:
       - name: Delete Docker Image from Artifact Registry
         run: |
           gcloud artifacts docker images delete \
-            europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/skill-arcade-backend:pr-${{ github.event.pull_request.number }} \
+            europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }} \
             --delete-tags \
             --quiet
