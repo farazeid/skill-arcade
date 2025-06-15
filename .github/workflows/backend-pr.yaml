@@ -1,4 +1,4 @@
-name: Deploy Backend to Google Cloud on Pull Request
+name: Backend PR
 
 on:
   pull_request:
@@ -6,7 +6,6 @@ on:
     paths:
       - "backend/**"
 
-# Correctly grants permissions for OIDC token generation
 permissions:
   contents: "read"
   id-token: "write"
@@ -14,14 +13,9 @@ permissions:
   checks: "write"
 
 jobs:
-  build_and_preview:
+  preview:
     if: ${{ github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: "read"
-      id-token: "write"
-      pull-requests: "write"
-      checks: "write"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,15 +24,14 @@ jobs:
         id: auth
         uses: "google-github-actions/auth@v2"
         with:
-          project_id: "${{ secrets.GCP_PROJECT_ID }}"
-          workload_identity_provider: "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}"
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Set up Google Cloud SDK
         uses: "google-github-actions/setup-gcloud@v2"
 
-      # This is the corrected step
       - name: Configure Docker
-        run: gcloud auth configure-docker europe-west2-docker.pkg.dev
+        run: gcloud auth configure-docker skill-arcade
 
       - name: Build and Push Docker Image
         run: |
@@ -47,7 +40,37 @@ jobs:
           docker push $IMAGE_NAME
         working-directory: ./backend
 
-  cleanup_preview:
+      - name: Deploy to Cloud Run for Preview
+        id: deploy
+        run: |
+          gcloud run deploy skill-arcade-backend-pr-${{ github.event.pull_request.number }} \
+            --image=$IMAGE_NAME \
+            --region=europe-west2 \
+            --platform=managed \
+            --allow-unauthenticated \
+            --min-instances=0 \
+            --port=8000 \
+            --project=${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Get Cloud Run Service URL
+        id: url
+        run: |
+          URL=$(gcloud run services describe skill-arcade-backend-pr-${{ github.event.pull_request.number }} --platform managed --region europe-west2 --format 'value(status.url)')
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+      - name: Post Preview URL to Pull Request
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 Backend preview deployed at: ${{ steps.url.outputs.url }}`
+            })
+
+  cleanup:
     if: ${{ github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
@@ -57,8 +80,8 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: "google-github-actions/auth@v2"
         with:
-          project_id: "${{ secrets.GCP_PROJECT_ID }}"
-          workload_identity_provider: "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}"
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Set up Google Cloud SDK
         uses: "google-github-actions/setup-gcloud@v2"
