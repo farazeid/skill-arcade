@@ -24,13 +24,15 @@ function App() {
   const keyMap: { [key: string]: string } = {
     ArrowLeft: "LEFT",
     ArrowRight: "RIGHT",
-    " ": "FIRE", // Space
+    " ": "FIRE", // Spacebar
   };
 
   useEffect(() => {
     function connectWebSocket() {
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${wsProtocol}//${window.location.hostname}:8000/ws`;
+      const wsUrl =
+        import.meta.env.VITE_WS_URL ||
+        `${wsProtocol}//${window.location.hostname}:8000/ws`;
 
       socket.current = new WebSocket(wsUrl);
 
