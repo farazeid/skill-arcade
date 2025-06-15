@@ -23,18 +23,18 @@ jobs:
         id: auth
         uses: "google-github-actions/auth@v2"
         with:
+          project_id: "${{ secrets.GCP_PROJECT_ID }}"
           workload_identity_provider: "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}"
-          service_account: "${{ secrets.GCP_SERVICE_ACCOUNT }}"
 
       - name: Set up Google Cloud SDK
         uses: "google-github-actions/setup-gcloud@v2"
 
       - name: Configure Docker
-        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
+        run: gcloud auth configure-docker skill-arcade
 
       - name: Build and Push Docker Image
         run: |
-          export IMAGE_NAME="${{ secrets.GCP_REPO }}/${{ secrets.GCP_PROJECT_ID }}/skill-arcade-backend:pr-${{ github.event.pull_request.number }}"
+          export IMAGE_NAME="skill-arcade/${{ secrets.GCP_PROJECT_ID }}/skill-arcade-backend:pr-${{ github.event.pull_request.number }}"
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
         working-directory: ./backend
@@ -44,7 +44,7 @@ jobs:
         run: |
           gcloud run deploy skill-arcade-backend-pr-${{ github.event.pull_request.number }} \
             --image=$IMAGE_NAME \
-            --region=${{ secrets.GCP_REGION }} \
+            --region=europe-west2 \
             --platform=managed \
             --allow-unauthenticated \
             --min-instances=0 \
@@ -54,7 +54,7 @@ jobs:
       - name: Get Cloud Run Service URL
         id: url
         run: |
-          URL=$(gcloud run services describe skill-arcade-backend-pr-${{ github.event.pull_request.number }} --platform managed --region ${{ secrets.GCP_REGION }} --format 'value(status.url)')
+          URL=$(gcloud run services describe skill-arcade-backend-pr-${{ github.event.pull_request.number }} --platform managed --region europe-west2 --format 'value(status.url)')
           echo "url=$URL" >> $GITHUB_OUTPUT
 
       - name: Post Preview URL to Pull Request
@@ -82,8 +82,8 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: "google-github-actions/auth@v2"
         with:
+          project_id: "${{ secrets.GCP_PROJECT_ID }}"
           workload_identity_provider: "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}"
-          service_account: "${{ secrets.GCP_SERVICE_ACCOUNT }}"
 
       - name: Set up Google Cloud SDK
         uses: "google-github-actions/setup-gcloud@v2"
@@ -93,7 +93,7 @@ jobs:
         run: |
           gcloud run services delete skill-arcade-backend-pr-${{ github.event.pull_request.number }} \
             --platform=managed \
-            --region=${{ secrets.GCP_REGION }} \
+            --region=europe-west2 \
             --quiet \
             --project=${{ secrets.GCP_PROJECT_ID }}
 
@@ -101,7 +101,7 @@ jobs:
         # Deletes the container image created for the PR.
         run: |
           gcloud artifacts docker images delete \
-            ${{ secrets.GCP_REPO }}/${{ secrets.GCP_PROJECT_ID }}/skill-arcade-backend:pr-${{ github.event.pull_request.number }} \
+            skill-arcade/${{ secrets.GCP_PROJECT_ID }}/skill-arcade-backend:pr-${{ github.event.pull_request.number }} \
             --delete-tags \
             --quiet \
             --project=${{ secrets.GCP_PROJECT_ID }}
