@@ -24,7 +24,7 @@ function App() {
   const keyMap: { [key: string]: string } = {
     ArrowLeft: "LEFT",
     ArrowRight: "RIGHT",
-    " ": "FIRE", // Spacebar
+    " ": "FIRE", // Space
   };
 
   useEffect(() => {
