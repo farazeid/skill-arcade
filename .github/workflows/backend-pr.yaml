@@ -6,6 +6,7 @@ on:
     paths:
       - "backend/**"
 
+# Correctly grants permissions for OIDC token generation
 permissions:
   contents: "read"
   id-token: "write"
@@ -20,6 +21,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # This step will now have the correct permissions to run
       - name: Authenticate to Google Cloud
         id: auth
         uses: "google-github-actions/auth@v2"
@@ -31,11 +33,12 @@ jobs:
         uses: "google-github-actions/setup-gcloud@v2"
 
       - name: Configure Docker
-        run: gcloud auth configure-docker skill-arcade
+        run: gcloud auth configure-docker skill-arcade # Ensure this matches your Artifact Registry region, e.g., europe-west2-docker.pkg.dev
 
       - name: Build and Push Docker Image
         run: |
-          export IMAGE_NAME="skill-arcade/${{ secrets.GCP_PROJECT_ID }}/skill-arcade-backend:pr-${{ github.event.pull_request.number }}"
+          # It's a good practice to use the full Artifact Registry URL
+          export IMAGE_NAME="europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/skill-arcade-backend:pr-${{ github.event.pull_request.number }}"
           docker build -t $IMAGE_NAME .
           docker push $IMAGE_NAME
         working-directory: ./backend
@@ -59,7 +62,6 @@ jobs:
           echo "url=$URL" >> $GITHUB_OUTPUT
 
       - name: Post Preview URL to Pull Request
-        # This uses the official GitHub CLI to post a comment on the PR.
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -72,10 +74,8 @@ jobs:
             })
 
   cleanup_preview:
-    # This job only runs when the PR is closed.
     if: ${{ github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -90,7 +90,6 @@ jobs:
         uses: "google-github-actions/setup-gcloud@v2"
 
       - name: Delete Cloud Run Service
-        # Deletes the temporary Cloud Run service associated with the closed PR.
         run: |
           gcloud run services delete skill-arcade-backend-pr-${{ github.event.pull_request.number }} \
             --platform=managed \
@@ -99,10 +98,8 @@ jobs:
             --project=${{ secrets.GCP_PROJECT_ID }}
 
       - name: Delete Docker Image from Artifact Registry
-        # Deletes the container image created for the PR.
         run: |
           gcloud artifacts docker images delete \
-            skill-arcade/${{ secrets.GCP_PROJECT_ID }}/skill-arcade-backend:pr-${{ github.event.pull_request.number }} \
+            europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/skill-arcade-backend:pr-${{ github.event.pull_request.number }} \
             --delete-tags \
-            --quiet \
-            --project=${{ secrets.GCP_PROJECT_ID }}
+            --quiet
