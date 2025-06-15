@@ -1,0 +1,31 @@
+name: Deploy Frontend to Firebase on Pull Request
+
+on:
+  pull_request:
+    paths:
+      - "frontend/**"
+
+permissions:
+  checks: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  build_and_preview:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies and Build in Frontend
+        run: npm ci && npm run build
+        working-directory: ./frontend
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SKILL_ARCADE_D2194 }}
+          channelId: preview
+          projectId: skill-arcade-d2194
+          working-directory: ./frontend
