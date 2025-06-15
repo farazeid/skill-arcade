@@ -7,9 +7,10 @@ on:
       - "backend/**"
 
 permissions:
-  checks: write
-  contents: read
-  pull-requests: write
+  contents: "read"
+  id-token: "write"
+  pull-requests: "write"
+  checks: "write"
 
 jobs:
   build_and_preview:
