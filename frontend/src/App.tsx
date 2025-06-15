@@ -30,7 +30,9 @@ function App() {
   useEffect(() => {
     function connectWebSocket() {
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl = `${wsProtocol}//${window.location.hostname}:8000/ws`;
+      const wsUrl =
+        import.meta.env.VITE_WS_URL ||
+        `${wsProtocol}//${window.location.hostname}:8000/ws`;
 
       socket.current = new WebSocket(wsUrl);
 
@@ -39,7 +41,7 @@ function App() {
         setStatusColor("text-green-500");
       };
 
-      socket.current.onmessage = (event) => {
+      socket.current.onmessage = (event: MessageEvent) => {
         clientFrameCount.current++;
 
         const state = JSON.parse(event.data);
@@ -67,7 +69,7 @@ function App() {
         }
       };
 
-      socket.current.onerror = (error) => {
+      socket.current.onerror = (error: Event) => {
         console.error("WebSocket error:", error);
         setStatus("Connection Error.");
         setStatusColor("text-red-500");
