@@ -28,4 +28,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SKILL_ARCADE_D2194 }}
           channelId: preview
           projectId: skill-arcade-d2194
-          working-directory: ./frontend
+          entryPoint: ./frontend
