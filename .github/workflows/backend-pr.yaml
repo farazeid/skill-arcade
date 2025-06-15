@@ -74,7 +74,7 @@ jobs:
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SKILL_ARCADE_D2194 }}
-          channelId: preview
+          channelId: preview-pr-${{ github.event.pull_request.number }}
           projectId: skill-arcade-d2194
           entryPoint: ./frontend
 
