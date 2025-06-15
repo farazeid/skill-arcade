@@ -1,4 +1,4 @@
-name: Deploy Frontend to Firebase on Pull Request
+name: Frontend PR
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  build_and_preview:
+  preview:
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
@@ -28,6 +28,6 @@ jobs:
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SKILL_ARCADE_D2194 }}
-          channelId: preview
+          channelId: preview-pr-${{ github.event.pull_request.number }}
           projectId: skill-arcade-d2194
           entryPoint: ./frontend

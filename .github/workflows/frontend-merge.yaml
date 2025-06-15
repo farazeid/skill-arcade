@@ -1,4 +1,4 @@
-name: Deploy to Frontend to Firebase on Merge to Main
+name: Frontend Merge
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
       - "frontend/**"
 
 jobs:
-  build_and_deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
