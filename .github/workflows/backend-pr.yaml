@@ -31,7 +31,7 @@ jobs:
         uses: "google-github-actions/setup-gcloud@v2"
 
       - name: Configure Docker
-        run: gcloud auth configure-docker skill-arcade
+        run: gcloud auth configure-docker europe-west2-docker.pkg.dev
 
       - name: Build and Push Docker Image
         run: |
@@ -44,7 +44,7 @@ jobs:
         id: deploy
         run: |
           gcloud run deploy skill-arcade-backend-pr-${{ github.event.pull_request.number }} \
-            --image=$IMAGE_NAME \
+            --image="europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/skill-arcade-backend:pr-${{ github.event.pull_request.number }}" \
             --region=europe-west2 \
             --platform=managed \
             --allow-unauthenticated \
