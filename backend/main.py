@@ -1,15 +1,23 @@
 import asyncio
 import json
-import os
 from pathlib import Path
 
 import yaml
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from src import Game, game_loop
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/games")
@@ -18,7 +26,7 @@ def list_games() -> list[dict[str, str]]:
     game_configs_path = Path("game_configs")
     game_info = []
     for f in game_configs_path.glob("*.yaml"):
-        with open(f, "r") as f_in:
+        with open(f) as f_in:
             game_config = yaml.safe_load(f_in)
             game_info.append(
                 {"id": f.stem, "display_name": game_config["display_name"]}
