@@ -65,7 +65,7 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SKILL_ARCADE_D2194 }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
-          projectId: skill-arcade-d2194
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
           entryPoint: ./frontend
