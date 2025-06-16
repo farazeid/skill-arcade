@@ -49,12 +49,13 @@ jobs:
 
       - name: Get Service URLs
         id: service_urls
-        env:
-          API_URL: ${{ steps.deploy.outputs.url }}
         run: |
+          API_URL="${{ steps.deploy.outputs.url }}"
           WS_URL="wss://${API_URL#https://}"
-          echo "::add-mask::api_url=$API_URL" >> $GITHUB_OUTPUT
-          echo "::add-mask::ws_url=$WS_URL" >> $GITHUB_OUTPUT
+          echo "::add-mask::${API_URL}"
+          echo "::add-mask::${WS_URL}"
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "ws_url=$WS_URL" >> $GITHUB_OUTPUT
 
       - name: Install Dependencies and Build in Frontend
         run: npm ci && npm run build
