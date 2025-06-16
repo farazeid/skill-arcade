@@ -2,8 +2,11 @@ name: Frontend PR
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, closed]
     paths:
       - "frontend/**"
+    paths-ignore:
+      - "backend/**"
 
 permissions:
   checks: write
@@ -12,7 +15,7 @@ permissions:
 
 jobs:
   preview:
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    if: ${{ github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,3 +34,14 @@ jobs:
           channelId: preview-pr-${{ github.event.pull_request.number }}
           projectId: skill-arcade-d2194
           entryPoint: ./frontend
+
+  cleanup:
+    if: ${{ github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SKILL_ARCADE_D2194 }}
+          channelId: preview-pr-${{ github.event.pull_request.number }}
+          projectId: skill-arcade-d2194

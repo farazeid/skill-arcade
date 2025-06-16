@@ -40,26 +40,16 @@ jobs:
 
       - name: Deploy to Cloud Run
         id: deploy
-        run: |
-          gcloud run deploy skill-arcade-backend \
-            --image="europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:${{ github.sha }}" \
-            --region=europe-west2 \
-            --platform=managed \
-            --allow-unauthenticated \
-            --min-instances=1 \
-            --port=8000 \
-            --project=${{ secrets.GCP_PROJECT_ID }}
-
-      - name: Get Cloud Run Service URL
-        id: url
-        run: |
-          URL=$(gcloud run services describe skill-arcade-backend --platform managed --region europe-west2 --format 'value(status.url)')
-          echo "url=$URL" >> $GITHUB_OUTPUT
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: skill-arcade-backend
+          image: europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:${{ github.sha }}
+          region: europe-west2
 
       - name: Transform URL for WebSocket
         id: ws_url
         run: |
-          URL=${{ steps.url.outputs.url }}
+          URL=${{ steps.deploy.outputs.url }}
           WS_URL="wss://${URL#https://}/ws"
           echo "url=$WS_URL" >> $GITHUB_OUTPUT
 
