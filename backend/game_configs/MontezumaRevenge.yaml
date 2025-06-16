@@ -1,0 +1,5 @@
+display_name: "Montezuma's Revenge"
+
+game_id: MontezumaRevengeNoFrameskip-v4
+game_config:
+  render_mode: rgb_array

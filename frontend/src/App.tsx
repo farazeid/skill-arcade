@@ -1,38 +1,67 @@
 import { useState, useEffect, useRef } from "react";
 import GameCanvas from "./components/GameCanvas";
-import GameState from "./components/GameState";
 import GameManual from "./components/GameManual";
 import ServerStats from "./components/ServerStats";
+import { useKeyboardInput } from "./hooks/useKeyboardInput";
 
 function App() {
-  const [score, setScore] = useState(0);
-  const [lives, setLives] = useState(5);
   const [frame, setFrame] = useState(
-    "https://placehold.co/160x210/000000/FFFFFF?text=Loading..."
+    "https://placehold.co/160x210/000000/FFFFFF?text=Select+a+game"
   );
   const [isGameOver, setIsGameOver] = useState(false);
-  const [status, setStatus] = useState("Connecting...");
+  const [status, setStatus] = useState("Select a game to start");
   const [statusColor, setStatusColor] = useState("text-gray-500");
   const [clientFps, setClientFps] = useState(0);
   const [serverFps, setServerFps] = useState(0);
+  const [games, setGames] = useState<{ id: string; display_name: string }[]>(
+    []
+  );
+  const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  const [gameDisplayName, setGameDisplayName] = useState("");
+  const [gameActions, setGameActions] = useState<string[]>([]);
 
   const socket = useRef<WebSocket | null>(null);
-  const pressedKeys = useRef(new Set<string>());
   const clientFrameCount = useRef(0);
   const lastFpsTime = useRef(performance.now());
 
-  const keyMap: { [key: string]: string } = {
-    ArrowLeft: "LEFT",
-    ArrowRight: "RIGHT",
-    " ": "FIRE", // Spacebar
+  useKeyboardInput(socket, !!selectedGame && !isGameOver);
+
+  useEffect(() => {
+    fetch("/games")
+      .then((res) => res.json())
+      .then((data) => {
+        setGames(data);
+      });
+  }, []);
+
+  const handleGameSelected = (gameId: string) => {
+    if (socket.current) {
+      socket.current.close();
+    }
+    // Reset game state
+    setFrame("https://placehold.co/160x210/000000/FFFFFF?text=Loading...");
+    setIsGameOver(false);
+    setStatus("Connecting...");
+    setServerFps(0);
+    setGameActions([]);
+
+    setSelectedGame(gameId);
+    const game = games.find((g) => g.id === gameId);
+    if (game) {
+      setGameDisplayName(game.display_name);
+    }
   };
 
   useEffect(() => {
+    if (!selectedGame) {
+      return;
+    }
+
     function connectWebSocket() {
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const wsUrl =
-        import.meta.env.VITE_WS_URL ||
-        `${wsProtocol}//${window.location.hostname}:8000/ws`;
+      const host =
+        import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}`;
+      const wsUrl = `${host}/ws/${selectedGame}`;
 
       socket.current = new WebSocket(wsUrl);
 
@@ -43,19 +72,24 @@ function App() {
 
       socket.current.onmessage = (event: MessageEvent) => {
         clientFrameCount.current++;
-
         const state = JSON.parse(event.data);
 
-        setScore(state.score);
-        setLives(state.lives);
+        // Update state from server message
         setServerFps(state.serverFps || 0);
         setFrame(`data:image/jpeg;base64,${state.frame}`);
 
+        if (state.actions) {
+          setGameActions(state.actions);
+        }
+
+        if (state.gameName && !gameDisplayName) {
+          setGameDisplayName(state.gameName);
+        }
+
         if (state.gameOver) {
           setIsGameOver(true);
-          setStatus("Game Over. Refresh to play again.");
+          setStatus("Game Over. Select a game to play again.");
           setStatusColor("text-red-500");
-
           if (socket.current) {
             socket.current.close();
           }
@@ -63,8 +97,9 @@ function App() {
       };
 
       socket.current.onclose = () => {
+        // Don't show disconnected message if we are in a game over state
         if (!isGameOver) {
-          setStatus("Disconnected. Refresh to play again.");
+          setStatus("Disconnected. Select a game to play again.");
           setStatusColor("text-red-500");
         }
       };
@@ -78,67 +113,37 @@ function App() {
 
     connectWebSocket();
 
-    const sendAction = (action: string) => {
-      if (socket.current && socket.current.readyState === WebSocket.OPEN) {
-        socket.current.send(JSON.stringify({ type: "action", action: action }));
-      }
-    };
-
-    const releaseAction = (action: string) => {
-      if (socket.current && socket.current.readyState === WebSocket.OPEN) {
-        socket.current.send(
-          JSON.stringify({ type: "release_action", action: action })
-        );
-      }
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const action = keyMap[e.key];
-      if (action && !pressedKeys.current.has(action)) {
-        e.preventDefault();
-        pressedKeys.current.add(action);
-        sendAction(action);
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      const action = keyMap[e.key];
-      if (action) {
-        e.preventDefault();
-        pressedKeys.current.delete(action);
-        releaseAction(action);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-
-    let animationFrameId: number;
-    const updateFpsDisplay = () => {
-      const now = performance.now();
-      const delta = now - lastFpsTime.current;
-
-      if (delta >= 1000) {
-        // Update display once per second
-        const fps = clientFrameCount.current / (delta / 1000);
-        setClientFps(fps);
-        clientFrameCount.current = 0;
-        lastFpsTime.current = now;
-      }
-      animationFrameId = requestAnimationFrame(updateFpsDisplay);
-    };
-
-    updateFpsDisplay();
+    const animationFrameId = requestAnimationFrame(updateFpsDisplay);
 
     return () => {
       if (socket.current) {
         socket.current.close();
       }
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [isGameOver]); // Re-run effect if isGameOver changes to handle onclose message properly
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedGame]);
+
+  // Moved out of useEffect to avoid re-creating it on every render
+  const updateFpsDisplay = () => {
+    const now = performance.now();
+    const delta = now - lastFpsTime.current;
+
+    if (delta >= 1000) {
+      // Update display once per second
+      const fps = clientFrameCount.current / (delta / 1000);
+      setClientFps(fps);
+      clientFrameCount.current = 0;
+      lastFpsTime.current = now;
+    }
+    requestAnimationFrame(updateFpsDisplay);
+  };
+
+  useEffect(() => {
+    const animationFrameId = requestAnimationFrame(updateFpsDisplay);
+    return () => cancelAnimationFrame(animationFrameId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
@@ -147,12 +152,17 @@ function App() {
         Header: (1) Bath Reinforcement Learning Lab's Skill Arcade, (2) User
         Profile
       </div>
-      <div className="flex items-center justify-center">
-        <GameManual />
+      <div className="flex items-center justify-between w-full px-4">
+        <div className="w-64">
+          <GameManual
+            games={games}
+            onGameSelected={handleGameSelected}
+            gameDisplayName={gameDisplayName}
+            gameActions={gameActions}
+          />
+        </div>
         <GameCanvas frame={frame} isGameOver={isGameOver} />
-
-        <div>
-          <GameState score={score} lives={lives} />
+        <div className="w-64">
           <ServerStats
             status={status}
             statusColor={statusColor}
