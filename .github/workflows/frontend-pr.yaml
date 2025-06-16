@@ -3,10 +3,6 @@ name: Frontend PR
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
-    paths:
-      - "frontend/**"
-    paths-ignore:
-      - "backend/**"
 
 permissions:
   checks: write
@@ -14,8 +10,24 @@ permissions:
   pull-requests: write
 
 jobs:
+  filter:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend_only: ${{ steps.filter.outputs.frontend == 'true' && steps.filter.outputs.backend == 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+            backend:
+              - 'backend/**'
+
   preview:
-    if: ${{ github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository }}
+    needs: filter
+    if: ${{ github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository && needs.filter.outputs.frontend_only == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -37,7 +49,8 @@ jobs:
           entryPoint: ./frontend
 
   cleanup:
-    if: ${{ github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository }}
+    needs: filter
+    if: ${{ github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository && needs.filter.outputs.frontend_only == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: FirebaseExtended/action-hosting-deploy@v0
