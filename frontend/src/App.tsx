@@ -27,7 +27,7 @@ function App() {
   useKeyboardInput(socket, !!selectedGame && !isGameOver);
 
   useEffect(() => {
-    const apiUrl = import.meta.env.VITE_API_URL;
+    const apiUrl = import.meta.env.VITE_API_URL || "";
     fetch(`${apiUrl}/games`)
       .then((res) => {
         if (!res.ok) {
@@ -69,7 +69,10 @@ function App() {
     }
 
     function connectWebSocket() {
-      const wsUrl = `${import.meta.env.VITE_WS_URL}/ws/${selectedGame}`;
+      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const host =
+        import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}`;
+      const wsUrl = `${host}/ws/${selectedGame}`;
 
       socket.current = new WebSocket(wsUrl);
 
