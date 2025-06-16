@@ -27,10 +27,21 @@ function App() {
   useKeyboardInput(socket, !!selectedGame && !isGameOver);
 
   useEffect(() => {
-    fetch("/games")
-      .then((res) => res.json())
+    const apiUrl = import.meta.env.VITE_API_URL || "";
+    fetch(`${apiUrl}/games`)
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
         setGames(data);
+      })
+      .catch((error) => {
+        console.error("Fetching games failed:", error);
+        setStatus("Failed to load games.");
+        setStatusColor("text-red-500");
       });
   }, []);
 

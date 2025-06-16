@@ -47,17 +47,19 @@ jobs:
           image: europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }}
           region: europe-west2
 
-      - name: Get Cloud Run Service URL
-        id: ws_url
+      - name: Get Service URLs
+        id: service_urls
         run: |
-          URL=${{ steps.deploy.outputs.url }}
-          WS_URL="wss://${URL#https://}/ws"
-          echo "url=$WS_URL" >> $GITHUB_OUTPUT
+          API_URL=${{ steps.deploy.outputs.url }}
+          WS_URL="wss://${API_URL#https://}"
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "ws_url=$WS_URL" >> $GITHUB_OUTPUT
 
       - name: Install Dependencies and Build in Frontend
         run: npm ci && npm run build
         env:
-          VITE_WS_URL: ${{ steps.ws_url.outputs.url }}
+          VITE_API_URL: ${{ steps.service_urls.outputs.api_url }}
+          VITE_WS_URL: ${{ steps.service_urls.outputs.ws_url }}
         working-directory: ./frontend
 
       - uses: FirebaseExtended/action-hosting-deploy@v0

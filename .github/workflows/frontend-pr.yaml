@@ -24,6 +24,7 @@ jobs:
       - name: Install Dependencies and Build in Frontend
         run: npm ci && npm run build
         env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_WS_URL: ${{ secrets.VITE_WS_URL }}
         working-directory: ./frontend
 
