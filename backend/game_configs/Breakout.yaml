@@ -1,0 +1,5 @@
+display_name: Breakout
+
+game_id: BreakoutNoFrameskip-v4
+game_config:
+  render_mode: rgb_array

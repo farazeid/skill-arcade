@@ -4,11 +4,26 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "frontend/**"
 
 jobs:
+  filter:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend_only: ${{ steps.filter.outputs.frontend == 'true' && steps.filter.outputs.backend == 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+            backend:
+              - 'backend/**'
+
   deploy:
+    needs: filter
+    if: ${{ needs.filter.outputs.frontend_only == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -17,6 +32,7 @@ jobs:
       - name: Install Dependencies and Build in Frontend
         run: npm ci && npm run build
         env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_WS_URL: ${{ secrets.VITE_WS_URL }}
         working-directory: ./frontend
 
