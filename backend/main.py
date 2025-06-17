@@ -70,11 +70,9 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str) -> None:
 
 
 # --- Serve Frontend ---
-# Mount static files at /static instead of / to avoid conflicts with API routes
-static_files_dir = Path(__file__).parent.parent / "frontend" / "dist"
-if static_files_dir.is_dir():
-    app.mount(
-        "/static",
-        StaticFiles(directory=static_files_dir, html=True),
-        name="static-frontend",
-    )
+script_dir = Path(__file__).parent.resolve()
+app.mount(
+    "/",
+    StaticFiles(directory=script_dir, html=True),
+    name="static",
+)

@@ -7,8 +7,8 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
+ADD . /app
 WORKDIR /app
-COPY . /app
 RUN uv sync --locked
 
 EXPOSE 8080
