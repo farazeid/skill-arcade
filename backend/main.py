@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 import yaml
-from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -18,14 +18,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.get("/")
-def root():
-    """Root endpoint that returns a simple message."""
-    return {
-        "message": "Skill Arcade API is running. Visit /games to see available games."
-    }
 
 
 @app.get("/games")
@@ -78,14 +70,11 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str) -> None:
 
 
 # --- Serve Frontend ---
-# This must come AFTER all other endpoints.
-# It serves the built frontend assets from the `frontend/dist` directory.
-# The path is relative to this file's location (`backend/main.py`),
-# assuming the backend is run from the project's `backend` directory.
+# Mount static files at /static instead of / to avoid conflicts with API routes
 static_files_dir = Path(__file__).parent.parent / "frontend" / "dist"
 if static_files_dir.is_dir():
     app.mount(
-        "/",
+        "/static",
         StaticFiles(directory=static_files_dir, html=True),
         name="static-frontend",
     )
