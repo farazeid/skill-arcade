@@ -55,11 +55,18 @@ jobs:
         uses: "google-github-actions/setup-gcloud@v2"
 
       - name: Google Cloud Docker Auth
-        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Google Cloud Artifacts Delete Current
+        run: |
+          gcloud artifacts docker images delete \
+            ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }} \
+            --delete-tags \
+            --quiet
 
       - name: Docker Build & Google Cloud Artifacts Push
         run: |
-          docker build -t "${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }}" .
+          docker build --platform linux/amd64 -t "${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }}" .
           docker push "${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }}"
         working-directory: ./backend
 
@@ -95,11 +102,14 @@ jobs:
         run: |
           URL=$(gcloud run services describe skill-arcade-backend-pr-${{ github.event.pull_request.number }} --platform managed --region ${{ env.GCP_REGION }} --format 'value(status.url)')
           echo "api_url=$URL" >> $GITHUB_OUTPUT
-          WS_URL="wss://${URL#https://}"
+          WS_URL="ws://${URL#https://}"
           echo "ws_url=$WS_URL" >> $GITHUB_OUTPUT
 
       - name: Build
-        run: npm ci && npm run build
+        run: |
+          npm ci && npm run build
+          echo ${{ steps.url.outputs.api_url }}
+          echo ${{ steps.url.outputs.ws_url }}
         env:
           VITE_API_URL: ${{ steps.url.outputs.api_url }}
           VITE_WS_URL: ${{ steps.url.outputs.ws_url }}

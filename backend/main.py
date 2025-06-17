@@ -70,8 +70,14 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str) -> None:
 
 
 # --- Serve Frontend ---
-# This mounts the current directory and tells FastAPI to serve index.html
-# for the root URL. This is more robust than reading the file manually.
-# NOTE: This must come AFTER the /ws endpoint
-script_dir = Path(__file__).parent.resolve()
-app.mount("/", StaticFiles(directory=script_dir, html=True), name="static")
+# This must come AFTER all other endpoints.
+# It serves the built frontend assets from the `frontend/dist` directory.
+# The path is relative to this file's location (`backend/main.py`),
+# assuming the backend is run from the project's `backend` directory.
+static_files_dir = Path(__file__).parent.parent / "frontend" / "dist"
+if static_files_dir.is_dir():
+    app.mount(
+        "/",
+        StaticFiles(directory=static_files_dir, html=True),
+        name="static-frontend",
+    )
