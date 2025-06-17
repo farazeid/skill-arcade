@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 import yaml
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -18,6 +18,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/")
+def root():
+    """Root endpoint that returns a simple message."""
+    return {
+        "message": "Skill Arcade API is running. Visit /games to see available games."
+    }
 
 
 @app.get("/games")
