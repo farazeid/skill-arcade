@@ -1,0 +1,81 @@
+name: Merge
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  GCP_REGION: europe-west2
+  DOCKER_IMAGE_NAME: europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend
+  GCP_CLOUDRUN_NAME: backend
+
+permissions:
+  contents: "read"
+  id-token: "write"
+  checks: "write"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Google Cloud Auth
+        id: auth
+        uses: "google-github-actions/auth@v2"
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Google Cloud SDK Init
+        uses: "google-github-actions/setup-gcloud@v2"
+
+      - name: Google Cloud Docker Auth
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Docker Build & Google Cloud Artifacts Push
+        run: |
+          docker build --platform linux/amd64 \
+            -t "${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}" \
+            -t "${{ env.DOCKER_IMAGE_NAME }}:latest" .
+          docker push --all-tags "${{ env.DOCKER_IMAGE_NAME }}"
+        working-directory: ./backend
+
+      - name: Google Cloud Run Deploy
+        run: |
+          gcloud run deploy "${{ env.GCP_CLOUDRUN_NAME }}" \
+          --image="${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}" \
+          --region="${{ env.GCP_REGION }}" \
+          --platform=managed \
+          --allow-unauthenticated > /dev/null
+
+      - name: Google Cloud Run Service URL
+        id: url
+        run: |
+          URL=$(gcloud run services describe ${{ env.GCP_CLOUDRUN_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format 'value(status.url)')
+          WS_URL="wss://${URL#https://}"
+          echo "::add-mask::$URL"
+          echo "::add-mask::$WS_URL"
+          echo "api_url=$URL" >> $GITHUB_OUTPUT
+          echo "ws_url=$WS_URL" >> $GITHUB_OUTPUT
+
+      - name: Build
+        run: |
+          npm ci && npm run build
+        env:
+          VITE_API_URL: ${{ steps.url.outputs.api_url }}
+          VITE_WS_URL: ${{ steps.url.outputs.ws_url }}
+        working-directory: ./frontend
+
+      - name: Firebase Hosting Deploy
+        id: deploy_hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          entryPoint: ./frontend

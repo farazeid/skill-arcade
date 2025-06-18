@@ -9,11 +9,13 @@ from fastapi.staticfiles import StaticFiles
 
 from src import Game, game_loop
 
+# Enable CORS so the frontend (served from Firebase or elsewhere) can call the API
+# In production you may want to restrict the allowed origins instead of "*".
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # TODO: Replace with specific origins for stricter security
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,7 +45,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str) -> None:
     game_config_path = Path("game_configs") / f"{game_id}.yaml"
     if not game_config_path.is_file():
         print(f"Game config not found: {game_config_path}")
-        await websocket.close(code=1003)  # 1003: "unsupported data"
+        await websocket.close(code=1003)  # 1003: "unsupported data
         return
 
     with open(game_config_path) as f:
@@ -67,11 +69,3 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str) -> None:
             game_loop_task.cancel()
         game.env.close()
         print("Game loop task cancelled and environment closed.")
-
-
-# --- Serve Frontend ---
-# This mounts the current directory and tells FastAPI to serve index.html
-# for the root URL. This is more robust than reading the file manually.
-# NOTE: This must come AFTER the /ws endpoint.
-script_dir = Path(__file__).parent.resolve()
-app.mount("/", StaticFiles(directory=script_dir, html=True), name="static")
