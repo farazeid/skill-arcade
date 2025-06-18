@@ -69,11 +69,3 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str) -> None:
             game_loop_task.cancel()
         game.env.close()
         print("Game loop task cancelled and environment closed.")
-
-
-# --- Serve Frontend ---
-# This mounts the current directory and tells FastAPI to serve index.html
-# for the root URL. This is more robust than reading the file manually.
-# NOTE: This must come AFTER the /ws endpoint.
-script_dir = Path(__file__).parent.resolve()
-app.mount("/", StaticFiles(directory=script_dir, html=True), name="static")
