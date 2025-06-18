@@ -4,11 +4,22 @@ from pathlib import Path
 
 import yaml
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from src import Game, game_loop
 
+# Enable CORS so the frontend (served from Firebase or elsewhere) can call the API
+# In production you may want to restrict the allowed origins instead of "*".
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # TODO: Replace with specific origins for stricter security
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/games")
