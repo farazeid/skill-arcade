@@ -43,7 +43,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str) -> None:
     game_config_path = Path("game_configs") / f"{game_id}.yaml"
     if not game_config_path.is_file():
         print(f"Game config not found: {game_config_path}")
-        await websocket.close(code=1003)  # 1003: "unsupported data"
+        await websocket.close(code=1003)  # 1003: "unsupported data
         return
 
     with open(game_config_path) as f:
