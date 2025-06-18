@@ -59,10 +59,12 @@ jobs:
 
       - name: Google Cloud Artifacts Delete Current
         run: |
-          gcloud artifacts docker images delete \
-            ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }} \
-            --delete-tags \
-            --quiet
+          if gcloud artifacts docker images list ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend --filter="tags:pr-${{ github.event.pull_request.number }}" --format="get(name)" | grep -q .; then
+            gcloud artifacts docker images delete \
+              ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }} \
+              --delete-tags \
+              --quiet
+          fi
 
       - name: Docker Build & Google Cloud Artifacts Push
         run: |
