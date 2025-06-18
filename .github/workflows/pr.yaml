@@ -91,7 +91,7 @@ jobs:
         run: |
           URL=$(gcloud run services describe skill-arcade-backend-pr-${{ github.event.pull_request.number }} --platform managed --region ${{ env.GCP_REGION }} --format 'value(status.url)')
           echo "api_url=$URL" >> $GITHUB_OUTPUT
-          WS_URL="ws://${URL#https://}"
+          WS_URL="wss://${URL#https://}"
           echo "ws_url=$WS_URL" >> $GITHUB_OUTPUT
 
       - name: Build
