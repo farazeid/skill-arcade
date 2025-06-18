@@ -78,12 +78,13 @@ jobs:
 
       - name: Google Cloud Run Deploy
         if: ${{ needs.file_changes.outputs.backend_changed == 'true' }}
-        id: deploy
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: skill-arcade-backend-pr-${{ github.event.pull_request.number }}
-          image: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }}
-          region: ${{ env.GCP_REGION }}
+        run: |
+          gcloud run deploy "skill-arcade-backend-pr-${{ github.event.pull_request.number }}" \
+          --image="${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }}" \
+          --region="${{ env.GCP_REGION }}" \
+          --platform=managed \
+          --allow-unauthenticated \
+          --quiet
 
       - name: Google Cloud Run Service URL
         id: url
