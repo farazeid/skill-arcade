@@ -102,6 +102,8 @@ jobs:
       - name: Build
         run: |
           npm ci && npm run build
+          echo ${{ steps.url.outputs.api_url }}
+          echo ${{ steps.url.outputs.ws_url }}
         env:
           VITE_API_URL: ${{ steps.url.outputs.api_url }}
           VITE_WS_URL: ${{ steps.url.outputs.ws_url }}
