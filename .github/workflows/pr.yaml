@@ -62,8 +62,13 @@ jobs:
       - name: Google Cloud Artifacts Delete Current
         if: ${{ github.event.action == 'opened' || needs.file_changes.outputs.backend_changed == 'true' }}
         run: |
-          gcloud artifacts docker images delete \
-            ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }} \
+          if gcloud artifacts docker images describe \
+              ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }} >/dev/null 2>&1; then
+            gcloud artifacts docker images delete \
+              ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skill-arcade/backend:pr-${{ github.event.pull_request.number }}
+          else
+            echo "Image does not exist, skipping deletion."
+          fi
 
       - name: Docker Build & Google Cloud Artifacts Push
         if: ${{ github.event.action == 'opened' || needs.file_changes.outputs.backend_changed == 'true' }}
