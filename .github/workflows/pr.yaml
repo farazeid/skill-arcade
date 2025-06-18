@@ -96,8 +96,8 @@ jobs:
         run: |
           URL=$(gcloud run services describe ${{ env.GCP_CLOUDRUN_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format 'value(status.url)')
           WS_URL="wss://${URL#https://}"
-          echo "api_url=::add-mask::$URL" >> $GITHUB_OUTPUT
-          echo "ws_url=::add-mask::$WS_URL" >> $GITHUB_OUTPUT
+          echo "api_url=$URL" >> $GITHUB_OUTPUT
+          echo "ws_url=$WS_URL" >> $GITHUB_OUTPUT
 
       - name: Build
         run: |
