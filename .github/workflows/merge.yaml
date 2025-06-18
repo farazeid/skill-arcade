@@ -50,22 +50,21 @@ jobs:
           --image="${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}" \
           --region="${{ env.GCP_REGION }}" \
           --platform=managed \
-          --allow-unauthenticated \
-          --quiet
+          --allow-unauthenticated > /dev/null
 
       - name: Google Cloud Run Service URL
         id: url
         run: |
           URL=$(gcloud run services describe ${{ env.GCP_CLOUDRUN_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format 'value(status.url)')
           WS_URL="wss://${URL#https://}"
+          echo "::add-mask::$URL"
+          echo "::add-mask::$WS_URL"
           echo "api_url=$URL" >> $GITHUB_OUTPUT
           echo "ws_url=$WS_URL" >> $GITHUB_OUTPUT
 
       - name: Build
         run: |
           npm ci && npm run build
-          echo ${{ steps.url.outputs.api_url }}
-          echo ${{ steps.url.outputs.ws_url }}
         env:
           VITE_API_URL: ${{ steps.url.outputs.api_url }}
           VITE_WS_URL: ${{ steps.url.outputs.ws_url }}

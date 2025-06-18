@@ -73,8 +73,7 @@ jobs:
           --image="${{ env.TAGGED_DOCKER_IMAGE_NAME }}" \
           --region="${{ env.GCP_REGION }}" \
           --platform=managed \
-          --allow-unauthenticated \
-          --quiet
+          --allow-unauthenticated > /dev/null
 
       - name: Google Cloud Run Service URL
         id: url

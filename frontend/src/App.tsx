@@ -178,9 +178,7 @@ function App() {
           />
         </div>
       </div>
-      <div className="text-center text-sm text-gray-500">
-        Bath Reinforcement Learning Lab's Skill Arcade
-      </div>
+      <div>Bath Reinforcement Learning Lab's Skill Arcade</div>
     </>
   );
 }
