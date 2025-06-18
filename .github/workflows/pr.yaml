@@ -16,38 +16,23 @@ permissions:
   checks: "write"
 
 jobs:
-  file_changes:
+  deploy:
     runs-on: ubuntu-latest
-
     if: ${{ github.event.action != 'closed' }}
-
-    outputs:
-      backend_changed: ${{ steps.filter.outputs.backend == 'true' }}
-      frontend_changed: ${{ steps.filter.outputs.frontend == 'true' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: ID Changed Files
-        uses: dorny/paths-filter@v3
         id: filter
+        uses: dorny/paths-filter@v3
         with:
           filters: |
             backend:
               - "backend/**"
             frontend:
               - "frontend/**"
-
-  deploy:
-    runs-on: ubuntu-latest
-
-    needs: file_changes
-    if: ${{ github.event.action != 'closed' }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
       - name: Google Cloud Auth
         id: auth
@@ -60,11 +45,11 @@ jobs:
         uses: "google-github-actions/setup-gcloud@v2"
 
       - name: Google Cloud Docker Auth
-        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || needs.file_changes.outputs.backend_changed == 'true' }}
+        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
 
       - name: Google Cloud Artifacts Delete Current
-        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || needs.file_changes.outputs.backend_changed == 'true' }}
+        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
         run: |
           if gcloud artifacts docker images describe \
               ${{ env.TAGGED_DOCKER_IMAGE_NAME }} >/dev/null 2>&1; then
@@ -75,14 +60,14 @@ jobs:
           fi
 
       - name: Docker Build & Google Cloud Artifacts Push
-        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || needs.file_changes.outputs.backend_changed == 'true' }}
+        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
         run: |
           docker build --platform linux/amd64 -t "${{ env.TAGGED_DOCKER_IMAGE_NAME }}" .
           docker push "${{ env.TAGGED_DOCKER_IMAGE_NAME }}"
         working-directory: ./backend
 
       - name: Google Cloud Run Deploy
-        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || needs.file_changes.outputs.backend_changed == 'true' }}
+        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
         run: |
           gcloud run deploy "${{ env.GCP_CLOUDRUN_NAME }}" \
           --image="${{ env.TAGGED_DOCKER_IMAGE_NAME }}" \
@@ -96,14 +81,14 @@ jobs:
         run: |
           URL=$(gcloud run services describe ${{ env.GCP_CLOUDRUN_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format 'value(status.url)')
           WS_URL="wss://${URL#https://}"
+          echo "::add-mask::$URL"
+          echo "::add-mask::$WS_URL"
           echo "api_url=$URL" >> $GITHUB_OUTPUT
           echo "ws_url=$WS_URL" >> $GITHUB_OUTPUT
 
       - name: Build
         run: |
           npm ci && npm run build
-          echo ${{ steps.url.outputs.api_url }}
-          echo ${{ steps.url.outputs.ws_url }}
         env:
           VITE_API_URL: ${{ steps.url.outputs.api_url }}
           VITE_WS_URL: ${{ steps.url.outputs.ws_url }}
