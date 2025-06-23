@@ -42,7 +42,7 @@ jobs:
             -t "${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}" \
             -t "${{ env.DOCKER_IMAGE_NAME }}:latest" .
           docker push --all-tags "${{ env.DOCKER_IMAGE_NAME }}"
-        working-directory: ./backend
+        working-directory: ./website/backend
 
       - name: Google Cloud Run Deploy
         run: |
@@ -68,7 +68,7 @@ jobs:
         env:
           VITE_API_URL: ${{ steps.url.outputs.api_url }}
           VITE_WS_URL: ${{ steps.url.outputs.ws_url }}
-        working-directory: ./frontend
+        working-directory: ./website/frontend
 
       - name: Firebase Hosting Deploy
         id: deploy_hosting
@@ -78,4 +78,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
-          entryPoint: ./frontend
+          entryPoint: ./website/frontend

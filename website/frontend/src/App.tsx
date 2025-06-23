@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import GameCanvas from "./components/GameCanvas";
-import GameManual from "./components/GameManual";
-import ServerStats from "./components/ServerStats";
-import { useKeyboardInput } from "./hooks/useKeyboardInput";
+import GameCanvas from "./components/GameCanvas.tsx";
+import GameManual from "./components/GameManual.tsx";
+import ServerStats from "./components/ServerStats.tsx";
+import { useKeyboardInput } from "./hooks/useKeyboardInput.ts";
 
 function App() {
   const [frame, setFrame] = useState(
-    "https://placehold.co/160x210/000000/FFFFFF?text=Select+a+game"
+    "https://placehold.co/160x210/transparent/transparent?text="
   );
   const [isGameOver, setIsGameOver] = useState(false);
   const [status, setStatus] = useState("Select a game to start");
@@ -178,7 +178,9 @@ function App() {
           />
         </div>
       </div>
-      <div>Bath Reinforcement Learning Lab's Skill Arcade</div>
+      <div className="text-center text-sm text-gray-500">
+        Bath Reinforcement Learning Lab's Skill Arcade
+      </div>
     </>
   );
 }

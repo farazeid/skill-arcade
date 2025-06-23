@@ -53,7 +53,7 @@ const GameManual: React.FC<GameManualProps> = ({
     availableSimpleActions.length > 0
       ? availableSimpleActions
           .map((action) => `${keyDisplayMap[action]} (${action})`)
-          .join(", ")
+          .join("\n")
       : "Select a game to see controls.";
 
   return (
@@ -111,7 +111,9 @@ const GameManual: React.FC<GameManualProps> = ({
       )}
 
       <div className="text-left text-xs mt-4 text-gray-500">
-        Controls: {controlsText}
+        Controls:
+        <br />
+        <span style={{ whiteSpace: "pre-line" }}>{controlsText}</span>
       </div>
     </div>
   );

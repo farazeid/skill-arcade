@@ -3,7 +3,7 @@ import json
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from src import Game
+from src.game import Game
 
 TICK_RATE = 1 / 60  # Aim for 60 FPS
 
