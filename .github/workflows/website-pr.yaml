@@ -56,7 +56,7 @@ jobs:
         if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
         run: |
           docker build --platform linux/amd64 -t "${{ env.TAGGED_DOCKER_IMAGE_NAME }}" .
-        working-directory: ./backend
+        working-directory: ./website/backend
 
       - name: Google Cloud Artifacts Delete Current
         if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
@@ -73,7 +73,7 @@ jobs:
         if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
         run: |
           docker push "${{ env.TAGGED_DOCKER_IMAGE_NAME }}"
-        working-directory: ./backend
+        working-directory: ./website/backend
 
       - name: Google Cloud Run Deploy
         if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
@@ -100,7 +100,7 @@ jobs:
         env:
           VITE_API_URL: ${{ steps.url.outputs.api_url }}
           VITE_WS_URL: ${{ steps.url.outputs.ws_url }}
-        working-directory: ./frontend
+        working-directory: ./website/frontend
 
       - uses: w9jds/firebase-action@v14.8.0
         with:
@@ -108,7 +108,7 @@ jobs:
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          PROJECT_PATH: ./frontend
+          PROJECT_PATH: ./website/frontend
 
       - name: Firebase Hosting Deploy
         id: deploy_hosting
@@ -118,7 +118,7 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: pr-${{ github.event.pull_request.number }}
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
-          entryPoint: ./frontend
+          entryPoint: ./website/frontend
 
   cleanup:
     if: ${{ github.event.action == 'closed' }}
@@ -155,4 +155,4 @@ jobs:
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          PROJECT_PATH: ./frontend
+          PROJECT_PATH: ./website/frontend

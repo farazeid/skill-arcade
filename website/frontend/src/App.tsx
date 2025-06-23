@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import GameCanvas from "./components/GameCanvas";
-import GameManual from "./components/GameManual";
-import ServerStats from "./components/ServerStats";
-import { useKeyboardInput } from "./hooks/useKeyboardInput";
+import GameCanvas from "./components/GameCanvas.tsx";
+import GameManual from "./components/GameManual.tsx";
+import ServerStats from "./components/ServerStats.tsx";
+import { useKeyboardInput } from "./hooks/useKeyboardInput.ts";
 
 function App() {
   const [frame, setFrame] = useState(

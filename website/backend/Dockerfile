@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-ADD . /app
+ADD src /app
 WORKDIR /app
 RUN uv sync --locked
 

@@ -5,9 +5,8 @@ from pathlib import Path
 import yaml
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
-from src import Game, game_loop
+from src.game import Game, game_loop
 
 # Enable CORS so the frontend (served from Firebase or elsewhere) can call the API
 # In production you may want to restrict the allowed origins instead of "*".
@@ -21,13 +20,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+GAME_CONFIGS_PATH = Path("src/game/configs")
+
 
 @app.get("/games")
 def list_games() -> list[dict[str, str]]:
     """List all available games."""
-    game_configs_path = Path("game_configs")
     game_info = []
-    for f in game_configs_path.glob("*.yaml"):
+    for f in GAME_CONFIGS_PATH.glob("*.yaml"):
         with open(f) as f_in:
             game_config = yaml.safe_load(f_in)
             game_info.append(
@@ -42,7 +42,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str) -> None:
     await websocket.accept()
     print(f"New client connected for game {game_id}, creating game.")
 
-    game_config_path = Path("game_configs") / f"{game_id}.yaml"
+    game_config_path = GAME_CONFIGS_PATH / f"{game_id}.yaml"
     if not game_config_path.is_file():
         print(f"Game config not found: {game_config_path}")
         await websocket.close(code=1003)  # 1003: "unsupported data
