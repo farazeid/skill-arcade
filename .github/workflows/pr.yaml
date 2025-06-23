@@ -102,16 +102,13 @@ jobs:
           VITE_WS_URL: ${{ steps.url.outputs.ws_url }}
         working-directory: ./frontend
 
-      - name: Firebase Hosting Delete Current
-        run: |
-          if firebase hosting:channel:list --project=${{ secrets.FIREBASE_PROJECT_ID }} | grep -q "pr-${{ github.event.pull_request.number }}"; then
-            firebase hosting:channel:delete pr-${{ github.event.pull_request.number }} \
-              --project=${{ secrets.FIREBASE_PROJECT_ID }} \
-              --force
-          else
-            echo "Channel does not exist, skipping deletion."
-          fi
-        working-directory: ./frontend
+      - uses: w9jds/firebase-action@v14.8.0
+        with:
+          args: hosting:channel:delete pr-${{ github.event.pull_request.number }} --force
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          PROJECT_PATH: ./frontend
 
       - name: Firebase Hosting Deploy
         id: deploy_hosting
@@ -149,9 +146,10 @@ jobs:
           gcloud artifacts docker images delete \
           ${{ env.TAGGED_DOCKER_IMAGE_NAME }}
 
-      - name: Firebase Hosting Delete Channel
-        run: |
-          firebase hosting:channel:delete pr-${{ github.event.pull_request.number }} \
-            --project=${{ secrets.FIREBASE_PROJECT_ID }} \
-            --force
-        working-directory: ./frontend
+      - uses: w9jds/firebase-action@v14.8.0
+        with:
+          args: hosting:channel:delete pr-${{ github.event.pull_request.number }} --force
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          PROJECT_PATH: ./frontend
