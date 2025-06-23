@@ -89,16 +89,18 @@ const GameManual: React.FC<GameManualProps> = ({
             aria-labelledby="options-menu"
           >
             {games.length > 0 ? (
-              games.map((game) => (
-                <button
-                  key={game.id}
-                  onClick={() => handleOptionClick(game.id)}
-                  className="block w-full text-left px-4 py-2 text-lg text-white hover:bg-gray-600"
-                  role="menuitem"
-                >
-                  {game.display_name}
-                </button>
-              ))
+              games
+                .sort((a, b) => a.display_name.localeCompare(b.display_name))
+                .map((game) => (
+                  <button
+                    key={game.id}
+                    onClick={() => handleOptionClick(game.id)}
+                    className="block w-full text-left px-4 py-2 text-lg text-white hover:bg-gray-600"
+                    role="menuitem"
+                  >
+                    {game.display_name}
+                  </button>
+                ))
             ) : (
               <div className="px-4 py-2 text-sm text-gray-400">
                 Loading games...

@@ -7,11 +7,10 @@ import gymnasium as gym
 
 
 class Game:
-    def __init__(self, display_name: str, game_id: str, game_config: dict) -> None:
+    def __init__(self, display_name: str, env: dict) -> None:
         self.display_name = display_name
 
-        self.game_id = game_id
-        self.env = gym.make(game_id, **game_config)
+        self.env = gym.make(**env["make"])
 
         action_meanings = self.env.unwrapped.get_action_meanings()
         self.action_ids = {name: i for i, name in enumerate(action_meanings)}
