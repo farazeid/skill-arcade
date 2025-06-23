@@ -102,14 +102,6 @@ jobs:
           VITE_WS_URL: ${{ steps.url.outputs.ws_url }}
         working-directory: ./website/frontend
 
-      - uses: w9jds/firebase-action@v14.8.0
-        with:
-          args: hosting:channel:delete pr-${{ github.event.pull_request.number }} --force
-        env:
-          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          PROJECT_PATH: ./website/frontend
-
       - name: Firebase Hosting Deploy
         id: deploy_hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -145,14 +137,3 @@ jobs:
         run: |
           gcloud artifacts docker images delete \
           ${{ env.TAGGED_DOCKER_IMAGE_NAME }}
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - uses: w9jds/firebase-action@v14.8.0
-        with:
-          args: hosting:channel:delete pr-${{ github.event.pull_request.number }} --force
-        env:
-          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          PROJECT_PATH: ./website/frontend
