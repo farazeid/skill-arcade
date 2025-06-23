@@ -48,6 +48,12 @@ jobs:
         if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
 
+      - name: Docker Build
+        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
+        run: |
+          docker build --platform linux/amd64 -t "${{ env.TAGGED_DOCKER_IMAGE_NAME }}" .
+        working-directory: ./backend
+
       - name: Google Cloud Artifacts Delete Current
         if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
         run: |
@@ -59,10 +65,9 @@ jobs:
             echo "Image does not exist, skipping deletion."
           fi
 
-      - name: Docker Build & Google Cloud Artifacts Push
+      - name: Google Cloud Artifacts Push
         if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
         run: |
-          docker build --platform linux/amd64 -t "${{ env.TAGGED_DOCKER_IMAGE_NAME }}" .
           docker push "${{ env.TAGGED_DOCKER_IMAGE_NAME }}"
         working-directory: ./backend
 
@@ -91,6 +96,17 @@ jobs:
         env:
           VITE_API_URL: ${{ steps.url.outputs.api_url }}
           VITE_WS_URL: ${{ steps.url.outputs.ws_url }}
+        working-directory: ./frontend
+
+      - name: Firebase Hosting Delete Current
+        run: |
+          if firebase hosting:channel:list --project=${{ secrets.FIREBASE_PROJECT_ID }} | grep -q "pr-${{ github.event.pull_request.number }}"; then
+            firebase hosting:channel:delete pr-${{ github.event.pull_request.number }} \
+              --project=${{ secrets.FIREBASE_PROJECT_ID }} \
+              --force
+          else
+            echo "Channel does not exist, skipping deletion."
+          fi
         working-directory: ./frontend
 
       - name: Firebase Hosting Deploy
@@ -129,11 +145,9 @@ jobs:
           gcloud artifacts docker images delete \
           ${{ env.TAGGED_DOCKER_IMAGE_NAME }}
 
-      - name: Firebase Hosting Delete
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          channelId: pr-${{ github.event.pull_request.number }}
-          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
-          expires: 1m
+      - name: Firebase Hosting Delete Channel
+        run: |
+          firebase hosting:channel:delete pr-${{ github.event.pull_request.number }} \
+            --project=${{ secrets.FIREBASE_PROJECT_ID }} \
+            --force
+        working-directory: ./frontend
