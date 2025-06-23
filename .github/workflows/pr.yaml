@@ -146,6 +146,9 @@ jobs:
           gcloud artifacts docker images delete \
           ${{ env.TAGGED_DOCKER_IMAGE_NAME }}
 
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - uses: w9jds/firebase-action@v14.8.0
         with:
           args: hosting:channel:delete pr-${{ github.event.pull_request.number }} --force
