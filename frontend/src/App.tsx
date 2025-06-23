@@ -159,10 +159,6 @@ function App() {
   return (
     <>
       <title>BRLL Skill Arcade</title>
-      <div>
-        Header: (1) Bath Reinforcement Learning Lab's Skill Arcade, (2) User
-        Profile
-      </div>
       <div className="flex items-center justify-between w-full px-4">
         <div className="w-64">
           <GameManual
@@ -182,10 +178,7 @@ function App() {
           />
         </div>
       </div>
-      <div>
-        Footer: (1) Feedback Form, (2) Contact Us, (3) Privacy Policy, (4) Terms
-        of Service
-      </div>
+      <div>Bath Reinforcement Learning Lab's Skill Arcade</div>
     </>
   );
 }
