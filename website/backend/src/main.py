@@ -20,19 +20,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-GAME_CONFIGS_PATH = Path("src/game/configs")
+
+GAME_CONFIGS_PATH = Path("src/configs")
 
 
 @app.get("/games")
 def list_games() -> list[dict[str, str]]:
-    """List all available games."""
     game_info = []
-    for f in GAME_CONFIGS_PATH.glob("*.yaml"):
-        with open(f) as f_in:
-            game_config = yaml.safe_load(f_in)
-            game_info.append(
-                {"id": f.stem, "display_name": game_config["display_name"]}
-            )
+    for config_path in GAME_CONFIGS_PATH.glob("*.yaml"):
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+        game_info.append(
+            {
+                "id": config_path.stem,
+                "display_name": config["display_name"],
+            }
+        )
     return game_info
 
 

@@ -1,11 +1,56 @@
 import asyncio
+import base64
 import json
+import logging
+from typing import Any
 
+import ale_py  # noqa: F401
+import cv2
+import gymnasium as gym
 from fastapi import WebSocket, WebSocketDisconnect
 
-from src.game import Game
+logger = logging.getLogger(__name__)
 
 TICK_RATE = 1 / 60  # Aim for 60 FPS
+
+
+class Game:
+    def __init__(self, display_name: str, env: dict) -> None:
+        self.display_name = display_name
+
+        self.env = gym.make(**env["make"])
+
+        action_meanings = self.env.unwrapped.get_action_meanings()
+        self.action_ids = {name: i for i, name in enumerate(action_meanings)}
+
+        self.obs, self.info = self.env.reset()
+        self.game_over = False
+
+    def step(self, action: int) -> None:
+        if self.game_over:
+            return
+
+        self.obs, _, _, _, info = self.env.step(action)
+
+        if "lives" in info:
+            self.lives = info["lives"]
+            if self.lives == 0:
+                self.game_over = True
+
+    def get_state(self) -> dict[str, Any]:
+        _, buffer = cv2.imencode(".jpg", self.obs)
+        obs_encoded = base64.b64encode(buffer).decode("utf-8")
+
+        return {
+            "frame": obs_encoded,
+            "gameOver": self.game_over,
+        }
+
+    def get_init_state(self) -> dict[str, Any]:
+        state = self.get_state()
+        state["actions"] = list(self.action_ids.keys())
+        state["gameName"] = self.display_name
+        return state
 
 
 async def game_loop(websocket: WebSocket, game: Game) -> None:
@@ -33,14 +78,14 @@ async def game_loop(websocket: WebSocket, game: Game) -> None:
                     if message.get("type") == "action" and "action" in message:
                         current_action_name = message["action"]
 
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # No more messages in the queue
                     break
                 except WebSocketDisconnect:
                     raise  # Re-raise to be caught by the outer loop
-                except Exception:
+                except Exception as e:
                     # Ignore other message-related errors
-                    pass
+                    logger.warning(f"Error receiving message: {e}")
 
             # --- Determine action for this tick ---
             # The frontend sends the complete action name (e.g., "UPRIGHTFIRE")
