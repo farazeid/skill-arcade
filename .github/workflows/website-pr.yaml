@@ -34,9 +34,9 @@ jobs:
         with:
           filters: |
             backend:
-              - "backend/**"
+              - "website/backend/**"
             frontend:
-              - "frontend/**"
+              - "website/frontend/**"
 
       - name: Google Cloud Auth
         id: auth
