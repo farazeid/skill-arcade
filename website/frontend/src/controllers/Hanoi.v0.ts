@@ -7,15 +7,6 @@ To move a block between poles:
 
 export const relevantKeys: string[] = ["1", "2", "3"];
 
-enum Action {
-  One2Two = 0,
-  One2Three = 1,
-  Two2One = 2,
-  Two2Three = 3,
-  Three2One = 4,
-  Three2Two = 5,
-}
-
 export const determineAction = (from: string, to: string): number | null => {
   const actionMap: { [key: string]: number } = {
     "12": 0,
