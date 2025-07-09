@@ -1,20 +1,34 @@
 import React, { useState, useEffect, useRef } from "react";
+import { loadController } from "../controllers/loader";
 
 type GameManualProps = {
   games: { id: string; display_name: string }[];
   onGameSelected: (gameId: string) => void;
   gameDisplayName: string;
-  gameActions: string[];
+  gameId: string | null;
 };
 
 const GameManual: React.FC<GameManualProps> = ({
   games,
   onGameSelected,
   gameDisplayName,
-  gameActions,
+  gameId,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [manualDescription, setManualDescription] = useState<string>("");
+
+  useEffect(() => {
+    if (gameId) {
+      loadController(gameId).then((controller) => {
+        if (controller) {
+          setManualDescription(controller.manualDescription);
+        }
+      });
+    } else {
+      setManualDescription("Select a game to start.");
+    }
+  }, [gameId]);
 
   const handleOptionClick = (gameId: string) => {
     onGameSelected(gameId);
@@ -36,28 +50,8 @@ const GameManual: React.FC<GameManualProps> = ({
     };
   }, [dropdownRef]);
 
-  const keyDisplayMap: { [key: string]: string } = {
-    UP: "↑",
-    DOWN: "↓",
-    LEFT: "←",
-    RIGHT: "→",
-    FIRE: "Space",
-  };
-
-  const baseActions = Object.keys(keyDisplayMap);
-  const availableSimpleActions = gameActions.filter((a) =>
-    baseActions.includes(a)
-  );
-
-  const controlsText =
-    availableSimpleActions.length > 0
-      ? availableSimpleActions
-          .map((action) => `${keyDisplayMap[action]} (${action})`)
-          .join("\n")
-      : "Select a game to see controls.";
-
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative mx-auto text-center" ref={dropdownRef}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -110,11 +104,14 @@ const GameManual: React.FC<GameManualProps> = ({
         </div>
       )}
 
-      <div className="text-left text-xs mt-4 text-gray-500">
-        Controls:
-        <br />
-        <span style={{ whiteSpace: "pre-line" }}>{controlsText}</span>
-      </div>
+      {gameId && (
+        <div className="text-left text-xs mt-4 text-gray-500">
+          Controls:
+          <br />
+          <br />
+          <span style={{ whiteSpace: "pre-line" }}>{manualDescription}</span>
+        </div>
+      )}
     </div>
   );
 };

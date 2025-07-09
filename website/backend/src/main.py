@@ -1,17 +1,41 @@
 import asyncio
 import json
+import logging
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import Session
 
+import src.db as db
 from src.game import Game, game_loop
+from src.uploader import Uploader
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s\n",
+    )
+
+    app.state.uploader = Uploader()
+
+    # initialisation above
+    yield  # app running
+    # cleanup below
+
+    await app.state.uploader.close()
+
+
+app = FastAPI(lifespan=lifespan)
+
 
 # Enable CORS so the frontend (served from Firebase or elsewhere) can call the API
 # In production you may want to restrict the allowed origins instead of "*".
-app = FastAPI()
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # TODO: Replace with specific origins for stricter security
@@ -41,34 +65,84 @@ def list_games() -> list[dict[str, str]]:
 
 @app.websocket("/ws/{game_id}")
 async def websocket_endpoint(websocket: WebSocket, game_id: str) -> None:
-    """Handle a new WebSocket connection, creating a unique game for it."""
-    await websocket.accept()
-    print(f"New client connected for game {game_id}, creating game.")
+    """Handle a new WebSocket connection, creating as unique game for it."""
 
     game_config_path = GAME_CONFIGS_PATH / f"{game_id}.yaml"
-    if not game_config_path.is_file():
-        print(f"Game config not found: {game_config_path}")
-        await websocket.close(code=1003)  # 1003: "unsupported data
-        return
+    assert game_config_path.is_file(), f"Game config {game_config_path} not found"
 
     with open(game_config_path) as f:
         game_config = yaml.safe_load(f)
+    seed = int(datetime.now(UTC).timestamp() * 1000)
+    game = Game(seed, **game_config)
 
-    game = Game(**game_config)
-    game_loop_task = None
+    db_game: db.Game = None
+    with Session(db.engine) as session:
+        existing_db_game = session.get(db.Game, game_id)
+        if not existing_db_game:
+            db_game = db.Game(
+                id=game_id,
+                config=game_config,
+            )
+            session.add(db_game)
+            session.commit()
+            session.refresh(db_game)
+            db_game = db_game
+            logging.info(f"DB: Game created: {game_id}")
+        else:
+            db_game = existing_db_game
+            logging.info(f"DB: Game exists: {game_id}")
+
+    await websocket.accept()
+
     try:
-        # Send the initial state and action map to get the game started
+        # Send setup material
         initial_state = game.get_init_state()
         await websocket.send_text(json.dumps(initial_state))
 
-        # Start the game loop for this client
-        game_loop_task = asyncio.create_task(game_loop(websocket, game))
+        db_episode: db.Episode = None
+        with Session(db.engine) as session:
+            db_episode = db.Episode(
+                game_id=db_game.id,
+                seed=seed,
+            )
+            session.add(db_episode)
+            session.commit()
+            session.refresh(db_episode)
+            db_episode = db_episode
+            logging.info(f"DB: Episode created: {db_episode.id}")
+
+        # Start the game loop for this client, using the global uploader
+        game_loop_task = asyncio.create_task(
+            game_loop(
+                websocket,
+                game,
+                app.state.uploader,
+                db_episode.id,
+            )
+        )
         await game_loop_task
 
     except WebSocketDisconnect:
-        print("Client forcefully disconnected.")
+        logging.info("WS: Client forcefully disconnected.")
+
     finally:
+        assert db_episode, f"db_episode lost; currently: {db_episode}"
+
+        db_episode.n_steps = game.n_steps
+        if game.won:
+            db_episode.status = db.EpisodeStatus.WON
+        elif game.game_over:
+            db_episode.status = db.EpisodeStatus.LOST
+        # else remains as default db.EpisodeStatus.INCOMPLETE
+
+        with Session(db.engine) as session:
+            session.add(db_episode)
+            session.commit()
+            logging.info(
+                f"DB: Episode updated: {db_episode}; n_steps: {db_episode.n_steps}; final status: {db_episode.status}"
+            )
+
         if game_loop_task:
             game_loop_task.cancel()
         game.env.close()
-        print("Game loop task cancelled and environment closed.")
+        logging.info("WS: Game loop task cancelled and environment closed.")
