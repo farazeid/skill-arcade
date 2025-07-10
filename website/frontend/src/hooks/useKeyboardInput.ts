@@ -1,56 +1,49 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { loadController } from "../controllers/loader";
 
-const keyMap: { [key: string]: string } = {
-  ArrowUp: "UP",
-  ArrowDown: "DOWN",
-  ArrowLeft: "LEFT",
-  ArrowRight: "RIGHT",
-  " ": "FIRE", // Spacebar
+type ContinuousActionController = {
+  relevantKeys: string[];
+  determineAction: (keys: Set<string>) => number;
 };
 
-const relevantKeys = Object.keys(keyMap);
-
-const determineAction = (keys: Set<string>): string => {
-  const up = keys.has("UP");
-  const down = keys.has("DOWN");
-  const left = keys.has("LEFT");
-  const right = keys.has("RIGHT");
-  const fire = keys.has("FIRE");
-
-  if (up && right && fire) return "UPRIGHTFIRE";
-  if (up && left && fire) return "UPLEFTFIRE";
-  if (down && right && fire) return "DOWNRIGHTFIRE";
-  if (down && left && fire) return "DOWNLEFTFIRE";
-
-  if (up && fire) return "UPFIRE";
-  if (right && fire) return "RIGHTFIRE";
-  if (left && fire) return "LEFTFIRE";
-  if (down && fire) return "DOWNFIRE";
-
-  if (up && right) return "UPRIGHT";
-  if (up && left) return "UPLEFT";
-  if (down && right) return "DOWNRIGHT";
-  if (down && left) return "DOWNLEFT";
-
-  if (fire) return "FIRE";
-  if (up) return "UP";
-  if (right) return "RIGHT";
-  if (left) return "LEFT";
-  if (down) return "DOWN";
-
-  return "NOOP";
+type SequentialActionController = {
+  relevantKeys: string[];
+  determineAction: (from: string, to: string) => number | null;
 };
+
+type Controller = ContinuousActionController | SequentialActionController;
 
 export const useKeyboardInput = (
   socket: React.MutableRefObject<WebSocket | null>,
-  isGameActive: boolean
+  isGameActive: boolean,
+  gameId: string | null
 ) => {
+  const [controller, setController] = useState<Controller | null>(null);
   const pressedKeys = useRef(new Set<string>());
-  const lastSentAction = useRef<string | null>(null);
+  const lastSentAction = useRef<number | null>(null);
   const actionTimer = useRef<number | null>(null);
+  const fromKey = useRef<string | null>(null); // For sequential input
 
-  const sendAction = (action: string) => {
+  useEffect(() => {
+    let isMounted = true;
+    if (gameId) {
+      loadController(gameId).then((module) => {
+        if (isMounted && module) {
+          setController(module as unknown as Controller);
+        }
+      });
+    } else {
+      setController(null);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [gameId]);
+
+  const sendAction = (action: number | null) => {
     if (
+      action !== null &&
       socket.current &&
       socket.current.readyState === WebSocket.OPEN &&
       action !== lastSentAction.current
@@ -60,22 +53,65 @@ export const useKeyboardInput = (
     }
   };
 
-  const updateAndSend = () => {
-    const action = determineAction(pressedKeys.current);
-    sendAction(action);
+  const updateAndSendContinuousAction = () => {
+    if (controller) {
+      const action = (
+        controller.determineAction as (keys: Set<string>) => number
+      )(pressedKeys.current);
+      sendAction(action);
+    }
   };
 
   useEffect(() => {
+    if (!isGameActive || !controller) return;
+
+    const isSequential =
+      controller.determineAction && controller.determineAction.length === 2;
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isGameActive || !relevantKeys.includes(e.key)) return;
+      if (!controller.relevantKeys || !controller.relevantKeys.includes(e.key))
+        return;
       e.preventDefault();
-      pressedKeys.current.add(keyMap[e.key] || e.key);
+
+      if (isSequential) {
+        pressedKeys.current.add(e.key);
+        if (!fromKey.current) {
+          fromKey.current = e.key;
+        }
+      } else {
+        pressedKeys.current.add(e.key);
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (!isGameActive || !relevantKeys.includes(e.key)) return;
+      if (!controller.relevantKeys || !controller.relevantKeys.includes(e.key))
+        return;
       e.preventDefault();
-      pressedKeys.current.delete(keyMap[e.key] || e.key);
+
+      if (isSequential) {
+        pressedKeys.current.delete(e.key);
+        if (e.key === fromKey.current) {
+          // The key that was initially held down is released.
+          // Reset fromKey.current only if no other keys are currently pressed.
+          if (pressedKeys.current.size === 0) {
+            fromKey.current = null;
+          }
+        } else {
+          // This is the "to" key being released.
+          if (fromKey.current && pressedKeys.current.has(fromKey.current)) {
+            // Only send action if the "from" key is still held down.
+            const action = (
+              controller.determineAction as (
+                from: string,
+                to: string
+              ) => number | null
+            )(fromKey.current, e.key);
+            sendAction(action);
+          }
+        }
+      } else {
+        pressedKeys.current.delete(e.key);
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -85,21 +121,32 @@ export const useKeyboardInput = (
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [isGameActive]);
+  }, [isGameActive, controller]);
 
   useEffect(() => {
-    if (isGameActive) {
+    if (isGameActive && controller) {
+      const isSequential =
+        controller.determineAction && controller.determineAction.length === 2;
       lastSentAction.current = null;
-      actionTimer.current = window.setInterval(updateAndSend, 1000 / 30); // 30 FPS
-      updateAndSend(); // Initial action
+      fromKey.current = null;
+      pressedKeys.current.clear();
+
+      if (!isSequential) {
+        actionTimer.current = window.setInterval(
+          updateAndSendContinuousAction,
+          1000 / 30
+        ); // 30 FPS
+        updateAndSendContinuousAction(); // Initial action
+      }
     } else {
       if (actionTimer.current) {
         clearInterval(actionTimer.current);
         actionTimer.current = null;
       }
       pressedKeys.current.clear();
+      fromKey.current = null;
       if (socket.current?.readyState === WebSocket.OPEN) {
-        sendAction("NOOP");
+        sendAction(null);
       }
     }
     return () => {
@@ -108,5 +155,5 @@ export const useKeyboardInput = (
         actionTimer.current = null;
       }
     };
-  }, [isGameActive, socket]);
+  }, [isGameActive, socket, controller]);
 };
