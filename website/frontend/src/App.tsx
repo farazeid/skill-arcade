@@ -95,7 +95,7 @@ function App() {
 
         if (state.gameOver) {
           setIsGameOver(true);
-          setStatus("Game Over. Select a game to play again.");
+          setStatus("Game Over. Refresh to play again.");
           setStatusColor("text-red-500");
           if (socket.current) {
             socket.current.close();
