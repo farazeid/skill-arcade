@@ -1,0 +1,10 @@
+display_name: Towers of Hanoi
+
+env:
+  make:
+    id: brll/Hanoi-v0
+    render_mode: rgb_array
+
+render: true
+
+realtime: false

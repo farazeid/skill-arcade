@@ -18,13 +18,13 @@ function App() {
   );
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [gameDisplayName, setGameDisplayName] = useState("");
-  const [gameActions, setGameActions] = useState<string[]>([]);
+  const [gameId, setGameId] = useState<string | null>(null);
 
   const socket = useRef<WebSocket | null>(null);
   const clientFrameCount = useRef(0);
   const lastFpsTime = useRef(performance.now());
 
-  useKeyboardInput(socket, !!selectedGame && !isGameOver);
+  useKeyboardInput(socket, !!selectedGame && !isGameOver, gameId);
 
   useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL || "";
@@ -54,11 +54,11 @@ function App() {
     setIsGameOver(false);
     setStatus("Connecting...");
     setServerFps(0);
-    setGameActions([]);
 
     setSelectedGame(gameId);
     const game = games.find((g) => g.id === gameId);
     if (game) {
+      setGameId(gameId);
       setGameDisplayName(game.display_name);
     }
   };
@@ -88,10 +88,6 @@ function App() {
         // Update state from server message
         setServerFps(state.serverFps || 0);
         setFrame(`data:image/jpeg;base64,${state.frame}`);
-
-        if (state.actions) {
-          setGameActions(state.actions);
-        }
 
         if (state.gameName && !gameDisplayName) {
           setGameDisplayName(state.gameName);
@@ -159,27 +155,29 @@ function App() {
   return (
     <>
       <title>BRLL Skill Arcade</title>
-      <div className="flex items-center justify-between w-full px-4">
-        <div className="w-64">
-          <GameManual
-            games={games}
-            onGameSelected={handleGameSelected}
-            gameDisplayName={gameDisplayName}
-            gameActions={gameActions}
-          />
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="flex flex-grow items-center justify-between w-full px-4">
+          <div className="w-64">
+            <GameManual
+              games={games}
+              onGameSelected={handleGameSelected}
+              gameDisplayName={gameDisplayName}
+              gameId={gameId}
+            />
+          </div>
+          <GameCanvas frame={frame} isGameOver={isGameOver} />
+          <div className="w-64">
+            <ServerStats
+              status={status}
+              statusColor={statusColor}
+              clientFps={clientFps}
+              serverFps={serverFps}
+            />
+          </div>
         </div>
-        <GameCanvas frame={frame} isGameOver={isGameOver} />
-        <div className="w-64">
-          <ServerStats
-            status={status}
-            statusColor={statusColor}
-            clientFps={clientFps}
-            serverFps={serverFps}
-          />
+        <div className="text-center text-sm text-gray-500">
+          Bath Reinforcement Learning Lab's Skill Arcade
         </div>
-      </div>
-      <div className="text-center text-sm text-gray-500">
-        Bath Reinforcement Learning Lab's Skill Arcade
       </div>
     </>
   );

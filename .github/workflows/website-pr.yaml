@@ -34,9 +34,9 @@ jobs:
         with:
           filters: |
             backend:
-              - "backend/**"
+              - "website/backend/**"
             frontend:
-              - "frontend/**"
+              - "website/frontend/**"
 
       - name: Google Cloud Auth
         id: auth
@@ -82,7 +82,13 @@ jobs:
           --image="${{ env.TAGGED_DOCKER_IMAGE_NAME }}" \
           --region="${{ env.GCP_REGION }}" \
           --platform=managed \
-          --allow-unauthenticated > /dev/null
+          --allow-unauthenticated \
+          --set-env-vars="UPLOADER_NUM_WORKERS=${{ secrets.UPLOADER_NUM_WORKERS }}" \
+          --set-env-vars="GCP_BUCKET_NAME=${{ secrets.GCP_BUCKET_NAME }}" \
+          --set-env-vars="GCP_SQL_CONNECTION_NAME=${{ secrets.GCP_SQL_CONNECTION_NAME }}" \
+          --set-env-vars="GCP_SQL_USER=${{ secrets.GCP_SQL_USER }}" \
+          --set-env-vars="GCP_SQL_PASSWORD=${{ secrets.GCP_SQL_PASSWORD }}" \
+          --set-env-vars="GCP_SQL_NAME=${{ secrets.GCP_SQL_NAME }}" > /dev/null
 
       - name: Google Cloud Run Service URL
         id: url
