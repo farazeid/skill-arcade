@@ -163,6 +163,7 @@ async def game_loop(
 
             # Send the new state to the client
             state = game.get_state()
+            state["gameWon"] = game.won
             state["serverFps"] = round(server_fps, 1)
             await websocket.send_text(json.dumps(state))
 
@@ -179,5 +180,6 @@ async def game_loop(
     # Final state update to make sure client knows game is over
     logging.info("WS: Game over; sending final state.")
     state = game.get_state()
+    state["gameWon"] = game.won
     state["serverFps"] = server_fps
     await websocket.send_text(json.dumps(state))
