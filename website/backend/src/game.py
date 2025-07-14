@@ -51,14 +51,19 @@ class Game:
     def step(self, action: int) -> None:
         if self.game_over:
             return
+        if "INVALID_ACTION" in self.info:
+            self.info.pop("INVALID_ACTION")
 
-        (
-            self.obs,
-            self.reward,
-            self.terminated,
-            self.truncated,
-            self.info,
-        ) = self.env.step(action)
+        try:
+            (
+                self.obs,
+                self.reward,
+                self.terminated,
+                self.truncated,
+                self.info,
+            ) = self.env.step(action)
+        except KeyError:  # Invalid action `self.transition_matrix[(state, action)][0]`
+            self.info["INVALID_ACTION"] = str(action)
 
         if self.terminated or self.truncated:
             self.game_over = True
