@@ -73,6 +73,7 @@ graph TD
   - Frontend:
     - React via TypeScript
     - Vite
+    - Tailwind CSS
 - Hosting:
   - Backend:
     - Google Cloud Run
