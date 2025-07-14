@@ -140,7 +140,7 @@ async def game_loop(
             uploader.put(
                 transition,
                 obs,
-                next_obs if game.truncated else None,
+                next_obs if not game.terminated else None,
             )
 
             # --- FPS Calculation ---
