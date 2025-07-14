@@ -63,7 +63,14 @@ class Game:
         if self.terminated or self.truncated:
             self.game_over = True
 
+        self.won = self.is_game_won()
+
         self.n_steps += 1
+
+    def is_game_won(self) -> bool:
+        if self.display_name == "Towers of Hanoi":
+            return self.env.unwrapped.is_state_terminal()
+        return False
 
     def get_state(self) -> dict[str, Any]:
         frame = self.env.render() if self.render else self.obs
