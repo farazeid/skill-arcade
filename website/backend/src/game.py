@@ -31,10 +31,6 @@ class Game:
 
         self.env = gym.make(**env["make"])
 
-        action_meanings = self.env.unwrapped.get_action_meanings()
-        self.action_ids = {name: i for i, name in enumerate(action_meanings)}
-        self.valid_actions = set(self.action_ids.values())
-
         self.obs, self.info = self.env.reset(seed=seed)
         self.reward = 0.0
         self.terminated = False
@@ -51,19 +47,31 @@ class Game:
     def step(self, action: int) -> None:
         if self.game_over:
             return
+        if "INVALID_ACTION" in self.info:
+            self.info.pop("INVALID_ACTION")
 
-        (
-            self.obs,
-            self.reward,
-            self.terminated,
-            self.truncated,
-            self.info,
-        ) = self.env.step(action)
+        try:
+            (
+                self.obs,
+                self.reward,
+                self.terminated,
+                self.truncated,
+                self.info,
+            ) = self.env.step(action)
+        except KeyError:  # Invalid action `self.transition_matrix[(state, action)][0]`
+            self.info["INVALID_ACTION"] = str(action)
 
         if self.terminated or self.truncated:
             self.game_over = True
 
+        self.won = self.is_game_won()
+
         self.n_steps += 1
+
+    def is_game_won(self) -> bool:
+        if self.display_name == "Towers of Hanoi":
+            return self.env.unwrapped.is_state_terminal()
+        return False
 
     def get_state(self) -> dict[str, Any]:
         frame = self.env.render() if self.render else self.obs
@@ -77,7 +85,6 @@ class Game:
 
     def get_init_state(self) -> dict[str, Any]:
         state = self.get_state()
-        state["actions"] = list(self.action_ids.keys())
         state["gameName"] = self.display_name
         return state
 
@@ -98,6 +105,9 @@ async def game_loop(
 
     action = 0
     while not game.game_over:
+        if not game.realtime:
+            action = None
+
         try:
             # --- Handle all incoming client messages ---
             while True:
@@ -109,7 +119,7 @@ async def game_loop(
                     message = json.loads(message_str)
 
                     if message.get("type") == "action" and "action" in message:
-                        action: int = message["action"]
+                        action = message["action"]
 
                 except TimeoutError:
                     break
@@ -118,7 +128,7 @@ async def game_loop(
                     raise
 
             # If Hanoi, don't tick server until valid action received
-            if not game.realtime and not action:
+            if not game.realtime and action is None:
                 await asyncio.sleep(TICK_RATE)
                 continue
 
@@ -140,7 +150,7 @@ async def game_loop(
             uploader.put(
                 transition,
                 obs,
-                next_obs if game.truncated else None,
+                next_obs if not game.terminated else None,
             )
 
             # --- FPS Calculation ---
@@ -153,6 +163,7 @@ async def game_loop(
 
             # Send the new state to the client
             state = game.get_state()
+            state["gameWon"] = game.won
             state["serverFps"] = round(server_fps, 1)
             await websocket.send_text(json.dumps(state))
 
@@ -161,7 +172,7 @@ async def game_loop(
             break
 
         except Exception as e:
-            logging.error(f"WS: Game loop error: {e}")
+            logging.error(f"WS: Game loop error: {e}", exc_info=True)
             break
 
         await asyncio.sleep(TICK_RATE)
@@ -169,5 +180,6 @@ async def game_loop(
     # Final state update to make sure client knows game is over
     logging.info("WS: Game over; sending final state.")
     state = game.get_state()
+    state["gameWon"] = game.won
     state["serverFps"] = server_fps
     await websocket.send_text(json.dumps(state))

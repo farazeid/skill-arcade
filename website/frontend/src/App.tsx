@@ -9,6 +9,7 @@ function App() {
     "https://placehold.co/160x210/transparent/transparent?text="
   );
   const [isGameOver, setIsGameOver] = useState(false);
+  const [isGameWon, setIsGameWon] = useState(false);
   const [status, setStatus] = useState("Select a game to start");
   const [statusColor, setStatusColor] = useState("text-gray-500");
   const [clientFps, setClientFps] = useState(0);
@@ -95,8 +96,7 @@ function App() {
 
         if (state.gameOver) {
           setIsGameOver(true);
-          setStatus("Game Over. Select a game to play again.");
-          setStatusColor("text-red-500");
+          setIsGameWon(state.gameWon);
           if (socket.current) {
             socket.current.close();
           }
@@ -104,11 +104,8 @@ function App() {
       };
 
       socket.current.onclose = () => {
-        // Don't show disconnected message if we are in a game over state
-        if (!isGameOver) {
-          setStatus("Disconnected. Select a game to play again.");
-          setStatusColor("text-red-500");
-        }
+        setStatus("Disconnected. Select a game to play again.");
+        setStatusColor("text-red-500");
       };
 
       socket.current.onerror = (error: Event) => {
@@ -165,7 +162,11 @@ function App() {
               gameId={gameId}
             />
           </div>
-          <GameCanvas frame={frame} isGameOver={isGameOver} />
+          <GameCanvas
+            frame={frame}
+            isGameOver={isGameOver}
+            isGameWon={isGameWon}
+          />
           <div className="w-64">
             <ServerStats
               status={status}

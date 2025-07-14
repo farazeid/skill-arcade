@@ -94,7 +94,7 @@ class Uploader:
                     await self._upload_obs(obs_data, obs_data_hash)
                     transition.obs_key = obs_data_hash
 
-                    if next_obs:
+                    if next_obs is not None:
                         buffer = io.BytesIO()
                         np.savez_compressed(buffer, obs=next_obs)  # .npz
                         next_obs_data = buffer.getvalue()
