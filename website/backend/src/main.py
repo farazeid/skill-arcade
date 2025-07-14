@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 import src.db as db
 from src.game import Game, game_loop
@@ -16,19 +16,21 @@ from src.uploader import Uploader
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI):  # noqa: ANN201
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s\n",
     )
-
-    app.state.uploader = Uploader()
+    await db.init()
+    app.state.uploader = Uploader(db.engine)
 
     # initialisation above
     yield  # app running
     # cleanup below
 
     await app.state.uploader.close()
+    if db.connector:
+        await db.connector.close_async()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -76,16 +78,18 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str) -> None:
     game = Game(seed, **game_config)
 
     db_game: db.Game = None
-    with Session(db.engine) as session:
-        existing_db_game = session.get(db.Game, game_id)
+    async with AsyncSession(
+        db.engine,
+        expire_on_commit=False,
+    ) as session:
+        existing_db_game = await session.get(db.Game, game_id)
         if not existing_db_game:
             db_game = db.Game(
                 id=game_id,
                 config=game_config,
             )
             session.add(db_game)
-            session.commit()
-            session.refresh(db_game)
+            await session.commit()
             db_game = db_game
             logging.info(f"DB: Game created: {game_id}")
         else:
@@ -100,14 +104,16 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str) -> None:
         await websocket.send_text(json.dumps(initial_state))
 
         db_episode: db.Episode = None
-        with Session(db.engine) as session:
+        async with AsyncSession(
+            db.engine,
+            expire_on_commit=False,
+        ) as session:
             db_episode = db.Episode(
                 game_id=db_game.id,
                 seed=seed,
             )
             session.add(db_episode)
-            session.commit()
-            session.refresh(db_episode)
+            await session.commit()
             db_episode = db_episode
             logging.info(f"DB: Episode created: {db_episode.id}")
 
@@ -135,9 +141,12 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str) -> None:
             db_episode.status = db.EpisodeStatus.LOST
         # else remains as default db.EpisodeStatus.INCOMPLETE
 
-        with Session(db.engine) as session:
+        async with AsyncSession(
+            db.engine,
+            expire_on_commit=False,
+        ) as session:
             session.add(db_episode)
-            session.commit()
+            await session.commit()
             logging.info(
                 f"DB: Episode updated: {db_episode}; n_steps: {db_episode.n_steps}; final status: {db_episode.status}"
             )

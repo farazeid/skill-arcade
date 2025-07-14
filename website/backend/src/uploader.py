@@ -11,9 +11,9 @@ import xxhash
 from dotenv import load_dotenv
 from gcloud.aio.storage import Blob, Storage
 from google.api_core.exceptions import GoogleAPICallError
-from sqlmodel import Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.db import Transition, engine
+from src.db import Transition
 
 load_dotenv()
 
@@ -24,7 +24,7 @@ UPLOADER_NUM_WORKERS = int(os.getenv("UPLOADER_NUM_WORKERS", "1"))
 class Uploader:
     """Multi-worker asynchronous queue for real-time uploading of observations to Google Cloud Storage"""
 
-    def __init__(self) -> None:
+    def __init__(self, engine) -> None:
         self.engine = engine
         self.gcp_session = aiohttp.ClientSession()
         storage = Storage(session=self.gcp_session)
@@ -68,11 +68,14 @@ class Uploader:
             logging.info("Uploader: All workers stopped.")
 
     def put(
-        self, obs: np.ndarray, transition_id: uuid.UUID, key_to_update: str
+        self,
+        transition: Transition,
+        obs: np.ndarray,
+        next_obs: np.ndarray | None,
     ) -> None:
         """Add an observation to the upload queue (non-blocking)."""
         try:
-            self._queue.put_nowait((obs, transition_id, key_to_update))
+            self._queue.put_nowait((transition, obs, next_obs))
 
         except asyncio.QueueFull:
             logging.warning("Uploader: Upload queue is full; dropping frame.")
@@ -82,16 +85,29 @@ class Uploader:
         logging.info("Uploader worker started.")
         while True:
             try:
-                obs, transition_id, key_to_update = await self._queue.get()
+                transition, obs, next_obs = await self._queue.get()
                 try:
                     buffer = io.BytesIO()
                     np.savez_compressed(buffer, obs=obs)  # .npz
-                    data = buffer.getvalue()
-                    data_hash = xxhash.xxh3_128_hexdigest(data)
+                    obs_data = buffer.getvalue()
+                    obs_data_hash = xxhash.xxh3_128_hexdigest(obs_data)
+                    await self._upload_obs(obs_data, obs_data_hash)
+                    transition.obs_key = obs_data_hash
 
-                    if key_to_update == "obs_key":
-                        await self._upload_obs(data, data_hash)
-                    self._update_db(transition_id, key_to_update, data_hash)
+                    if next_obs:
+                        buffer = io.BytesIO()
+                        np.savez_compressed(buffer, obs=next_obs)  # .npz
+                        next_obs_data = buffer.getvalue()
+                        next_obs_data_hash = xxhash.xxh3_128_hexdigest(next_obs_data)
+                        await self._upload_obs(next_obs_data, next_obs_data_hash)
+                        transition.next_obs_key = next_obs_data_hash
+
+                    async with AsyncSession(
+                        self.engine,
+                        expire_on_commit=False,
+                    ) as session:
+                        session.add(transition)
+                        await session.commit()
 
                 except Exception as e:
                     logging.error(f"Uploader: Error during upload or DB update: {e}")
@@ -140,24 +156,3 @@ class Uploader:
             raise
 
         return data_hash
-
-    def _update_db(
-        self,
-        transition_id: uuid.UUID,
-        key_to_update: str,
-        data_hash: str,
-    ) -> None:
-        with Session(self.engine) as session:
-            transition = session.get(Transition, transition_id)
-            if transition:
-                setattr(transition, key_to_update, data_hash)
-                session.add(transition)
-                session.commit()
-
-                logging.info(
-                    f"Uploader: Updated transition {transition_id} with {key_to_update}={data_hash}"
-                )
-            else:
-                logging.warning(
-                    f"Uploader: Transition {transition_id} not found in DB."
-                )

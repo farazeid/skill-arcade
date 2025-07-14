@@ -13,7 +13,10 @@ db = [
     "google-cloud-storage>=3.2.0",
     "xxhash>=3.5.0",
     "gcloud-aio-storage>=9.5.0",
-    "cloud-sql-python-connector[pg8000]>=1.18.2",
+    "asyncpg>=0.30.0",
+    "aiosqlite>=0.21.0",
+    "cloud-sql-python-connector[asyncpg]>=1.18.3",
+    "greenlet>=3.2.3",
 ]
 dev = [
     "pytest>=8.4.0",
@@ -23,6 +26,7 @@ game = [
     "ale-py>=0.11.1",
     "distinctipy>=1.3.4",
     "gymnasium>=1.1.1",
+    "networkx>=3.5",
     "opencv-python>=4.11.0.86",
     "pygame>=2.6.1",
 ]

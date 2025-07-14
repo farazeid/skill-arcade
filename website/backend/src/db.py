@@ -1,14 +1,21 @@
+import asyncio
 import enum
 import os
 import uuid
 from datetime import UTC, datetime
 
+import asyncpg
 from dotenv import load_dotenv
-from google.cloud.sql.connector import Connector
-from sqlalchemy import BigInteger, inspect
-from sqlmodel import JSON, Column, Enum, Field, Relationship, SQLModel, create_engine
+from google.cloud.sql.connector import Connector, create_async_connector
+from sqlalchemy import BigInteger, DateTime
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlmodel import JSON, Column, Enum, Field, Relationship, SQLModel
 
 load_dotenv()
+
+connector: Connector | None = None
+engine: AsyncEngine
+
 
 # class User(SQLModel, table=True):
 #     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
@@ -33,7 +40,10 @@ class Game(SQLModel, table=True):
     config: dict = Field(sa_column=Column(JSON))
     time_created: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
-        sa_column_kwargs={"onupdate": datetime.now(UTC)},
+        sa_column=Column(
+            DateTime(timezone=True),
+            onupdate=datetime.now(UTC),
+        ),
     )
 
     episodes: list["Episode"] = Relationship(back_populates="game")
@@ -57,11 +67,17 @@ class Episode(SQLModel, table=True):
     )
     time_created: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
-        sa_column_kwargs={"onupdate": datetime.now(UTC)},
+        sa_column=Column(
+            DateTime(timezone=True),
+            onupdate=datetime.now(UTC),
+        ),
     )
     time_updated: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
-        sa_column_kwargs={"onupdate": datetime.now(UTC)},
+        sa_column=Column(
+            DateTime(timezone=True),
+            onupdate=datetime.now(UTC),
+        ),
     )
 
     # user: User = Relationship(back_populates="episodes")
@@ -80,48 +96,49 @@ class Transition(SQLModel, table=True):
     terminated: bool
     truncated: bool
     info: dict = Field(sa_column=Column(JSON))
-    time_created: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    time_created: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True)),
+    )
 
     episode: Episode = Relationship(back_populates="transitions")
 
 
-USE_CLOUD_SQL = "GCP_SQL_CONNECTION_NAME" in os.environ
+async def init():
+    global engine, connector
+    if (
+        (CONNECTION_NAME := os.getenv("GCP_SQL_CONNECTION_NAME"))
+        and (DB_USER := os.getenv("GCP_SQL_USER"))
+        and (DB_PASS := os.getenv("GCP_SQL_PASSWORD"))
+        and (DB_NAME := os.getenv("GCP_SQL_NAME"))
+    ):
+        DB_DRIVER = "asyncpg"
 
-if USE_CLOUD_SQL:  # production
-    CONNECTION_NAME = os.getenv("GCP_SQL_CONNECTION_NAME")
-    DB_USER = os.getenv("GCP_SQL_USER")
-    DB_PASS = os.getenv("GCP_SQL_PASSWORD")
-    DB_NAME = os.getenv("GCP_SQL_NAME")
-    DB_DRIVER = "pg8000"
+        connector = await create_async_connector()
 
-    connector = Connector()
+        async def getconn() -> asyncpg.Connection:
+            conn = await connector.connect_async(
+                CONNECTION_NAME,
+                DB_DRIVER,
+                user=DB_USER,
+                password=DB_PASS,
+                db=DB_NAME,
+            )
+            return conn
 
-    def get_conn():
-        """Function to create a database connection object."""
-        conn = connector.connect(
-            CONNECTION_NAME,
-            DB_DRIVER,
-            user=DB_USER,
-            password=DB_PASS,
-            db=DB_NAME,
+        engine = create_async_engine(
+            "postgresql+asyncpg://",
+            async_creator=getconn,
+            echo=False,
         )
-        return conn
 
-    engine = create_engine(
-        "postgresql+pg8000://",
-        creator=get_conn,
-        echo=False,
-    )
+    else:  # local
+        sqlite_file_name = "db.db"
+        CONNECTION_NAME = f"sqlite+aiosqlite:///{sqlite_file_name}"
+        engine = create_async_engine(
+            CONNECTION_NAME,
+            echo=True,
+        )
 
-else:  # local
-    sqlite_file_name = "db.db"
-    sqlite_url = f"sqlite:///{sqlite_file_name}"
-    engine = create_engine(sqlite_url, echo=True)
-
-inspector = inspect(engine)
-if (
-    not inspector.has_table("game")
-    and not inspector.has_table("episode")
-    and not inspector.has_table("transition")
-):
-    SQLModel.metadata.create_all(engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)

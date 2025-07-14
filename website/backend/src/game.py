@@ -9,10 +9,9 @@ import ale_py  # noqa: F401
 import cv2
 import gymnasium as gym
 from fastapi import WebSocket, WebSocketDisconnect
-from sqlmodel import Session
 
 import src.games  # Import to ensure Gymnasium environments are registered
-from src.db import Transition, engine
+from src.db import Transition
 from src.uploader import Uploader
 
 TICK_RATE = 1 / 60  # Aim for 60 FPS
@@ -97,9 +96,6 @@ async def game_loop(
     frame_count = 0
     server_fps = 0.0
 
-    db_session = Session(engine)
-
-    prev_transition = None
     action = 0
     while not game.game_over:
         try:
@@ -128,6 +124,7 @@ async def game_loop(
 
             obs = game.obs
             game.step(action)
+            next_obs = game.obs
 
             # Create Transition DB entry
             transition = Transition(
@@ -139,16 +136,12 @@ async def game_loop(
                 truncated=game.truncated,
                 info=game.info,
             )
-            db_session.add(transition)
-            db_session.commit()
-            db_session.refresh(transition)
 
-            # Upload observations in the background
-            if prev_transition:
-                uploader.put(obs, prev_transition.id, "next_obs_key")
-            uploader.put(obs, transition.id, "obs_key")
-
-            prev_transition = transition
+            uploader.put(
+                transition,
+                obs,
+                next_obs if game.truncated else None,
+            )
 
             # --- FPS Calculation ---
             frame_count += 1
@@ -172,11 +165,6 @@ async def game_loop(
             break
 
         await asyncio.sleep(TICK_RATE)
-
-    db_session.close()
-
-    if game.truncated:
-        uploader.put(game.obs, prev_transition.id, "next_obs_key")
 
     # Final state update to make sure client knows game is over
     logging.info("WS: Game over; sending final state.")
