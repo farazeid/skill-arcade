@@ -1,20 +1,19 @@
-# Implementation from https://github.com/bath-reinforcement-learning-lab/brll-core
-
 import copy
 import itertools
-import random
+from collections.abc import Iterable
 from typing import Any
 
 import distinctipy
 import numpy as np
 import pygame
 from gymnasium import spaces
-from gymnasium.core import ActType, ObsType
 
-from src.games import BaseEnvironment
+from src.games import TabularEnvironment
+
+# Implementation from https://github.com/bath-reinforcement-learning-lab/brll-core
 
 
-class HanoiEnvironment(BaseEnvironment):
+class HanoiEnvironment(TabularEnvironment):
     metadata = {
         "render_modes": ["human", "rgb_array"],
         "render_fps": 4,
@@ -29,7 +28,6 @@ class HanoiEnvironment(BaseEnvironment):
         start_state: tuple[int, ...] | None = None,
         goal_state: tuple[int, ...] | None = None,
         render_mode: str | None = None,
-        deterministic: bool = True,
     ) -> None:
         """
         Instantiates a new HanoiEnvironment object with a specified number of disks and poles.
@@ -88,8 +86,7 @@ class HanoiEnvironment(BaseEnvironment):
         self.terminal = True
         self.current_state: tuple[int, ...]
 
-        self.deterministic = deterministic
-        super().__init__()
+        super().__init__(deterministic=True)
 
     def get_action_meanings(self) -> list[str]:
         return [
@@ -128,55 +125,43 @@ class HanoiEnvironment(BaseEnvironment):
 
         return copy.deepcopy(self.current_state), self._get_info()
 
-    def step(
-        self,
-        action: ActType,
-        state: ObsType | None = None,
-    ) -> tuple[ObsType, float, bool, bool, dict]:
-        if state is None:
-            state = self.current_state
-
-        reward = self.action_penalty
-        truncated = False
-
-        if not self.is_action_valid(action):
-            # If the action is not valid, the state does not change
-            next_state = state
-            terminal = self.is_state_terminal(next_state)
-            self.current_state = next_state
-            if self.render_mode == "human":
-                self.render()
-            return next_state, reward, terminal, truncated, self._get_info()
-
-        # Get the move (source_pole, dest_pole) from the action index
-        source_pole, dest_pole = self.move_list[action]
-
-        # Find the smallest disk on the source pole (largest index in state tuple)
-        source_disks = self._disks_on_pole(source_pole, state=state)
-        disk_to_move = max(source_disks)
-
-        # Create the new state
-        next_state_list = list(state)
-        next_state_list[disk_to_move] = dest_pole
-        next_state = tuple(next_state_list)
-
-        terminal = self.is_state_terminal(next_state)
-        if terminal:
-            reward += self.goal_reward
-
-        self.current_state = next_state
-
-        if self.render_mode == "human":
-            self.render()
-
-        return next_state, reward, terminal, truncated, self._get_info()
-
     def is_state_terminal(self, state: tuple[int, ...] | None = None) -> bool:
         if state is None:
             state = self.current_state
 
         # A state is only terminal if it is the goal state.
         return state == self.goal_state
+
+    def get_successors(
+        self, state: tuple[int, ...] | None = None, action: int | None = None
+    ) -> Iterable[tuple[tuple[tuple[int, ...], float], float]]:
+        if state is None:
+            state = self.current_state
+
+        actions: list[int]
+        actions = (
+            self.get_available_actions(state=state) if action is None else [action]
+        )
+
+        # Creates a list of all states which can be reached by
+        # taking the legal actions available in the given state.
+        successor_states = []
+        for action in actions:
+            successor_state = list(state)
+            source_pole, dest_pole = self.move_list[action]
+            disk_to_move = min(self._disks_on_pole(source_pole, state=state))
+            successor_state[disk_to_move] = dest_pole
+            successor_state = tuple(successor_state)
+
+            reward = (
+                self.goal_reward
+                if successor_state == self.goal_state
+                else self.action_penalty
+            )
+
+            successor_states.append(((successor_state, reward), 1.0 / len(actions)))
+
+        return successor_states
 
     def get_available_actions(self, state: tuple[int, ...] | None = None) -> list[int]:
         if state is None:
@@ -208,7 +193,7 @@ class HanoiEnvironment(BaseEnvironment):
         return np.array(list(legal_action_mask), dtype=np.int8)
 
     def _get_info(self) -> dict:
-        return {}  # TODO
+        return {}
         return {"action_mask": self._get_action_mask()}
 
     def get_initial_states(self) -> list[tuple[int, ...]]:
@@ -224,16 +209,17 @@ class HanoiEnvironment(BaseEnvironment):
         source_disks = self._disks_on_pole(source_pole, state=state)
         dest_disks = self._disks_on_pole(dest_pole, state=state)
 
-        if not source_disks:  # No disks on source pole
+        if source_disks == []:
+            # Cannot move a disk from an empty pole!
             return False
-
-        disk_to_move = max(source_disks)  # Smallest disk (largest index) on source pole
-
-        if not dest_disks:  # Destination pole is empty
-            return True
         else:
-            # Only allow the move if the disk being moved is smaller than the smallest disk on destination pole.
-            return disk_to_move < min(dest_disks)
+            if dest_disks == []:
+                # Can always move a disk to an empty pole!
+                return True
+            else:
+                # Otherwise, only allow the move if the smallest disk on the
+                # source pole is smaller than the smallest disk on destination pole.
+                return min(source_disks) < min(dest_disks)
 
     def _disks_on_pole(
         self, pole: int, state: tuple[int, ...] | None = None
