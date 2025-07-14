@@ -98,6 +98,9 @@ async def game_loop(
 
     action = 0
     while not game.game_over:
+        if not game.realtime:
+            action = None
+
         try:
             # --- Handle all incoming client messages ---
             while True:
@@ -109,7 +112,7 @@ async def game_loop(
                     message = json.loads(message_str)
 
                     if message.get("type") == "action" and "action" in message:
-                        action: int = message["action"]
+                        action = message["action"]
 
                 except TimeoutError:
                     break
@@ -118,7 +121,7 @@ async def game_loop(
                     raise
 
             # If Hanoi, don't tick server until valid action received
-            if not game.realtime and not action:
+            if not game.realtime and action is None:
                 await asyncio.sleep(TICK_RATE)
                 continue
 
