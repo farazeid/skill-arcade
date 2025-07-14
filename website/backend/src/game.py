@@ -31,10 +31,6 @@ class Game:
 
         self.env = gym.make(**env["make"])
 
-        action_meanings = self.env.unwrapped.get_action_meanings()
-        self.action_ids = {name: i for i, name in enumerate(action_meanings)}
-        self.valid_actions = set(self.action_ids.values())
-
         self.obs, self.info = self.env.reset(seed=seed)
         self.reward = 0.0
         self.terminated = False
@@ -89,7 +85,6 @@ class Game:
 
     def get_init_state(self) -> dict[str, Any]:
         state = self.get_state()
-        state["actions"] = list(self.action_ids.keys())
         state["gameName"] = self.display_name
         return state
 

@@ -88,11 +88,6 @@ class HanoiEnvironment(TabularEnvironment):
 
         super().__init__(deterministic=True)
 
-    def get_action_meanings(self) -> list[str]:
-        return [
-            f"Move from Pole {source} to Pole {dest}" for source, dest in self.move_list
-        ]
-
     def reset(
         self,
         *,
