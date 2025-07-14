@@ -1,5 +1,4 @@
-export const manualDescription: string = `Keys 1, 2, 3 refer to the left, middle, and 
-right poles respectively.
+export const manualDescription: string = `Keyboard numbers refer to their respective poles, left-to-right.
 
 To move a block between poles:
   1. Hold down the key for the pole the block is from
