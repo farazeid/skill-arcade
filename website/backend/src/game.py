@@ -164,7 +164,7 @@ async def game_loop(
             break
 
         except Exception as e:
-            logging.error(f"WS: Game loop error: {e}")
+            logging.error(f"WS: Game loop error: {e}", exc_info=True)
             break
 
         await asyncio.sleep(TICK_RATE)
