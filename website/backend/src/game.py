@@ -75,6 +75,7 @@ class Game:
 
     def get_state(self) -> dict[str, Any]:
         frame = self.env.render() if self.render else self.obs
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) if frame.shape[-1] == 3 else frame  # fmt: skip
         _, buffer = cv2.imencode(".jpg", frame)
         frame_encoded = base64.b64encode(buffer).decode("utf-8")
 
