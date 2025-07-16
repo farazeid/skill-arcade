@@ -176,11 +176,11 @@ function App() {
           <div className="absolute inset-0 bg-black bg-opacity-25 backdrop-blur-sm flex items-center justify-center z-30">
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="bg-green-500 hover:bg-green-400 text-white font-bold py-4 px-8 rounded-xl text-2xl shadow-lg"
+              className="bg-red-500 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-lg text-2xl shadow-lg"
             >
               Login to Play
             </button>
-            <div className="absolute bottom-2 text-center text-sm 400 w-full">
+            <div className="absolute bottom-2 text-center text-sm text-gray-400 w-full">
               Bath Reinforcement Learning Lab's Skill Arcade
             </div>
           </div>
@@ -191,10 +191,10 @@ function App() {
           {currentUser && (
             <div className="absolute top-4 right-4 z-20">
               <div className="flex items-center space-x-4">
-                <span className="italic 300">{currentUser.email}</span>
+                <span className="text-gray-300">{currentUser.email}</span>
                 <button
                   onClick={logout}
-                  className="bg-red-500 hover:bg-red-400 text-white font-bold py-2 px-4 rounded-xl"
+                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
                 >
                   Logout
                 </button>
@@ -227,7 +227,7 @@ function App() {
             </div>
           </div>
           {currentUser && (
-            <div className="text-center text-sm 500">
+            <div className="text-center text-sm text-gray-500">
               Bath Reinforcement Learning Lab's Skill Arcade
             </div>
           )}

@@ -55,12 +55,12 @@ const GameManual: React.FC<GameManualProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="text-2xl md:text-3xl font-bold text-green-500 hover:text-green-400 flex items-center focus:outline-none disabled:opacity-50"
+        className="text-2xl md:text-3xl font-bold text-red-500 flex items-center focus:outline-none disabled:opacity-50"
         disabled={games.length === 0}
       >
         {gameDisplayName || "Select a Game"}
         <svg
-          className="ml-2 -mr-1 h-12 w-12"
+          className="ml-2 -mr-1 h-8 w-8"
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 20 20"
           fill="currentColor"
@@ -75,7 +75,7 @@ const GameManual: React.FC<GameManualProps> = ({
       </button>
 
       {isOpen && (
-        <div className="origin-top-left absolute left-0 mt-2 w-max min-w-full rounded-xl shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none z-10 overflow-hidden">
+        <div className="origin-top-left absolute left-0 mt-2 w-max min-w-full rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
           <div
             className="py-1"
             role="menu"
@@ -96,7 +96,7 @@ const GameManual: React.FC<GameManualProps> = ({
                   </button>
                 ))
             ) : (
-              <div className="px-4 py-2 text-sm text-white">
+              <div className="px-4 py-2 text-sm text-gray-400">
                 Loading games...
               </div>
             )}
@@ -105,7 +105,7 @@ const GameManual: React.FC<GameManualProps> = ({
       )}
 
       {gameId && (
-        <div className="text-left text-xs mt-4 text-white">
+        <div className="text-left text-xs mt-4 text-gray-500">
           Controls:
           <br />
           <br />
