@@ -10,6 +10,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+import src.auth as auth
 import src.db as db
 from src.game import Game, game_loop
 from src.uploader import Uploader
@@ -22,6 +23,7 @@ async def lifespan(app: FastAPI):  # noqa: ANN201
         format="%(asctime)s %(levelname)s %(message)s\n",
     )
     await db.init()
+    auth.init()
     app.state.uploader = Uploader(db.engine)
 
     # initialisation above
@@ -66,8 +68,26 @@ def list_games() -> list[dict[str, str]]:
 
 
 @app.websocket("/ws/{game_id}")
-async def websocket_endpoint(websocket: WebSocket, game_id: str) -> None:
+async def websocket_endpoint(
+    websocket: WebSocket,
+    game_id: str,
+    token: str | None = None,
+) -> None:
     """Handle a new WebSocket connection, creating as unique game for it."""
+
+    if not token:
+        logging.error("WS: No token provided.")
+        await websocket.close(code=1008)  # Policy Violation
+        return
+
+    async with AsyncSession(
+        db.engine,
+    ) as session:
+        user: db.User | None = await auth.get_or_create_user(token, session)
+        if not user:
+            logging.error(f"WS: Invalid token: {token}")
+            await websocket.close(code=1008)  # Policy Violation
+            return
 
     game_config_path = GAME_CONFIGS_PATH / f"{game_id}.yaml"
     assert game_config_path.is_file(), f"Game config {game_config_path} not found"
@@ -109,6 +129,7 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str) -> None:
             expire_on_commit=False,
         ) as session:
             db_episode = db.Episode(
+                user_id=user.id,
                 game_id=db_game.id,
                 seed=seed,
             )

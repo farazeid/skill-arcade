@@ -2,9 +2,14 @@ import { useState, useEffect, useRef } from "react";
 import GameCanvas from "./components/GameCanvas.tsx";
 import GameManual from "./components/GameManual.tsx";
 import ServerStats from "./components/ServerStats.tsx";
+import AuthModal from "./components/AuthModal.tsx";
+import { useAuth } from "./context/AuthContext.tsx";
 import { useKeyboardInput } from "./hooks/useKeyboardInput.ts";
 
 function App() {
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { currentUser, logout } = useAuth();
+
   const [frame, setFrame] = useState(
     "https://placehold.co/160x210/transparent/transparent?text="
   );
@@ -47,6 +52,10 @@ function App() {
   }, []);
 
   const handleGameSelected = (gameId: string) => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (socket.current) {
       socket.current.close();
     }
@@ -65,15 +74,16 @@ function App() {
   };
 
   useEffect(() => {
-    if (!selectedGame) {
+    if (!selectedGame || !currentUser) {
       return;
     }
 
-    function connectWebSocket() {
+    const connectWebSocket = async () => {
+      const idToken = await currentUser.getIdToken();
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host =
         import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}`;
-      const wsUrl = `${host}/ws/${selectedGame}`;
+      const wsUrl = `${host}/ws/${selectedGame}?token=${idToken}`;
 
       socket.current = new WebSocket(wsUrl);
 
@@ -113,7 +123,7 @@ function App() {
         setStatus("Connection Error.");
         setStatusColor("text-red-500");
       };
-    }
+    };
 
     connectWebSocket();
 
@@ -126,7 +136,7 @@ function App() {
       cancelAnimationFrame(animationFrameId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedGame]);
+  }, [selectedGame, currentUser]);
 
   // Moved out of useEffect to avoid re-creating it on every render
   const updateFpsDisplay = () => {
@@ -152,32 +162,72 @@ function App() {
   return (
     <>
       <title>BRLL Skill Arcade</title>
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="flex flex-grow items-center justify-between w-full px-4">
-          <div className="w-64">
-            <GameManual
-              games={games}
-              onGameSelected={handleGameSelected}
-              gameDisplayName={gameDisplayName}
-              gameId={gameId}
-            />
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
+
+      {/* Main application wrapper */}
+      <div className="relative min-h-screen">
+        {/* Login Overlay */}
+        {!currentUser && (
+          <div className="absolute inset-0 bg-black bg-opacity-25 backdrop-blur-sm flex items-center justify-center z-30">
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="bg-red-500 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-lg text-2xl shadow-lg"
+            >
+              Login to Play
+            </button>
+            <div className="absolute bottom-2 text-center text-sm text-gray-400 w-full">
+              Bath Reinforcement Learning Lab's Skill Arcade
+            </div>
           </div>
-          <GameCanvas
-            frame={frame}
-            isGameOver={isGameOver}
-            isGameWon={isGameWon}
-          />
-          <div className="w-64">
-            <ServerStats
-              status={status}
-              statusColor={statusColor}
-              clientFps={clientFps}
-              serverFps={serverFps}
+        )}
+
+        {/* App content */}
+        <div className="flex flex-col items-center justify-center min-h-screen">
+          {currentUser && (
+            <div className="absolute top-4 right-4 z-20">
+              <div className="flex items-center space-x-4">
+                <span className="text-gray-300">{currentUser.email}</span>
+                <button
+                  onClick={logout}
+                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-grow items-center justify-between w-full px-4">
+            <div className="w-64">
+              <GameManual
+                games={games}
+                onGameSelected={handleGameSelected}
+                gameDisplayName={gameDisplayName}
+                gameId={gameId}
+              />
+            </div>
+            <GameCanvas
+              frame={frame}
+              isGameOver={isGameOver}
+              isGameWon={isGameWon}
             />
+            <div className="w-64">
+              <ServerStats
+                status={status}
+                statusColor={statusColor}
+                clientFps={clientFps}
+                serverFps={serverFps}
+              />
+            </div>
           </div>
-        </div>
-        <div className="text-center text-sm text-gray-500">
-          Bath Reinforcement Learning Lab's Skill Arcade
+          {currentUser && (
+            <div className="text-center text-sm text-gray-500">
+              Bath Reinforcement Learning Lab's Skill Arcade
+            </div>
+          )}
         </div>
       </div>
     </>

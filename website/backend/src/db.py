@@ -17,22 +17,24 @@ connector: Connector | None = None
 engine: AsyncEngine
 
 
-# class User(SQLModel, table=True):
-#     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
-#     email: str = Field(unique=True, index=True)
-#     password_hash: str
-#     password_salt: str
-#     date_of_birth: datetime | None = Field(default=None)
-#     time_created: datetime = Field(
-#         default_factory=lambda: datetime.now(UTC),
-#         sa_column_kwargs={"onupdate": datetime.now(UTC)},
-#     )
-#     time_updated: datetime = Field(
-#         default_factory=lambda: datetime.now(UTC),
-#         sa_column_kwargs={"onupdate": datetime.now(UTC)},
-#     )
+class User(SQLModel, table=True):
+    id: str = Field(primary_key=True, index=True)
+    time_created: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(
+            DateTime(timezone=True),
+            onupdate=datetime.now(UTC),
+        ),
+    )
+    time_updated: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(
+            DateTime(timezone=True),
+            onupdate=datetime.now(UTC),
+        ),
+    )
 
-#     episodes: list["Episode"] = Relationship(back_populates="user")
+    episodes: list["Episode"] = Relationship(back_populates="user")
 
 
 class Game(SQLModel, table=True):
@@ -57,7 +59,7 @@ class EpisodeStatus(str, enum.Enum):
 
 class Episode(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, index=True)
-    # user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
+    user_id: str = Field(foreign_key="user.id", index=True)
     game_id: str = Field(foreign_key="game.id", index=True)
     seed: int = Field(sa_column=Column(BigInteger))
     n_steps: int | None = Field(default=None)
@@ -80,7 +82,7 @@ class Episode(SQLModel, table=True):
         ),
     )
 
-    # user: User = Relationship(back_populates="episodes")
+    user: User = Relationship(back_populates="episodes")
     game: Game = Relationship(back_populates="episodes")
     transitions: list["Transition"] = Relationship(back_populates="episode")
 

@@ -110,12 +110,14 @@ cd website/backend
 2. Create a `.env` file:
 
 ```bash
-   touch .env
+touch .env
 ```
 
 3. Configure secrets in the `.env` file:
 
 ```dotenv
+# website/backend/.env
+
 GCP_PROJECT_NAME="..."
 GCP_BUCKET_NAME="..."
 GCP_SQL_CONNECTION_NAME="..."
@@ -124,6 +126,18 @@ GCP_SQL_USER="..."
 GCP_SQL_PASSWORD="..."
 
 UPLOADER_NUM_WORKERS="..."
+
+
+
+# website/frontend/.env
+
+VITE_FIREBASE_API_KEY="..."
+VITE_FIREBASE_AUTH_DOMAIN="..."
+VITE_FIREBASE_PROJECT_ID="..."
+VITE_FIREBASE_STORAGE_BUCKET="..."
+VITE_FIREBASE_MESSAGING_SENDER_ID="..."
+VITE_FIREBASE_APP_ID="..."
+VITE_FIREBASE_MEASUREMENT_ID="..."
 ```
 
 Refer to this [GitHub Gist](https://gist.github.com/farazeid/065c5c2b2b0d24ba48f1c53999a48576) to setup Google Cloud services via `gcloud` CLI.
