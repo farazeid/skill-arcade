@@ -74,15 +74,16 @@ function App() {
   };
 
   useEffect(() => {
-    if (!selectedGame) {
+    if (!selectedGame || !currentUser) {
       return;
     }
 
-    function connectWebSocket() {
+    const connectWebSocket = async () => {
+      const idToken = await currentUser.getIdToken();
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host =
         import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}`;
-      const wsUrl = `${host}/ws/${selectedGame}`;
+      const wsUrl = `${host}/ws/${selectedGame}?token=${idToken}`;
 
       socket.current = new WebSocket(wsUrl);
 
@@ -122,7 +123,7 @@ function App() {
         setStatus("Connection Error.");
         setStatusColor("text-red-500");
       };
-    }
+    };
 
     connectWebSocket();
 
@@ -135,7 +136,7 @@ function App() {
       cancelAnimationFrame(animationFrameId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedGame]);
+  }, [selectedGame, currentUser]);
 
   // Moved out of useEffect to avoid re-creating it on every render
   const updateFpsDisplay = () => {

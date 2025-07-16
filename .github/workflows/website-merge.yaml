@@ -58,6 +58,31 @@ jobs:
           docker push --all-tags "${{ env.DOCKER_IMAGE_NAME }}"
         working-directory: ./website/backend
 
+      - name: Prepare Environment File
+        env:
+          FIREBASE_CREDENTIALS_JSON: ${{ secrets.FIREBASE_CREDENTIALS }}
+          SECRET_UPLOADER_NUM_WORKERS: ${{ secrets.UPLOADER_NUM_WORKERS }}
+          SECRET_GCP_BUCKET_NAME: ${{ secrets.GCP_BUCKET_NAME }}
+          SECRET_GCP_SQL_CONNECTION_NAME: ${{ secrets.GCP_SQL_CONNECTION_NAME }}
+          SECRET_GCP_SQL_USER: ${{ secrets.GCP_SQL_USER }}
+          SECRET_GCP_SQL_PASSWORD: ${{ secrets.GCP_SQL_PASSWORD }}
+          SECRET_GCP_SQL_NAME: ${{ secrets.GCP_SQL_NAME }}
+        run: |
+          echo "Writing FIREBASE_CREDENTIALS to env.yaml..."
+          echo "FIREBASE_CREDENTIALS: |" > env.yaml
+          echo "$FIREBASE_CREDENTIALS_JSON" | sed 's/^/  /' >> env.yaml
+
+          echo "Appending other secrets to env.yaml..."
+          echo "UPLOADER_NUM_WORKERS: $SECRET_UPLOADER_NUM_WORKERS" >> env.yaml
+          echo "GCP_BUCKET_NAME: $SECRET_GCP_BUCKET_NAME" >> env.yaml
+          echo "GCP_SQL_CONNECTION_NAME: $SECRET_GCP_SQL_CONNECTION_NAME" >> env.yaml
+          echo "GCP_SQL_USER: $SECRET_GCP_SQL_USER" >> env.yaml
+          echo "GCP_SQL_PASSWORD: $SECRET_GCP_SQL_PASSWORD" >> env.yaml
+          echo "GCP_SQL_NAME: $SECRET_GCP_SQL_NAME" >> env.yaml
+
+          echo "env.yaml created successfully."
+          cat env.yaml
+
       - name: Google Cloud Run Deploy
         if: ${{ steps.filter.outputs.backend == 'true' && steps.filter.outputs.frontend == 'true' }}
         run: |
@@ -66,12 +91,7 @@ jobs:
           --region="${{ env.GCP_REGION }}" \
           --platform=managed \
           --allow-unauthenticated \
-          --set-env-vars="UPLOADER_NUM_WORKERS=${{ secrets.UPLOADER_NUM_WORKERS }}" \
-          --set-env-vars="GCP_BUCKET_NAME=${{ secrets.GCP_BUCKET_NAME }}" \
-          --set-env-vars="GCP_SQL_CONNECTION_NAME=${{ secrets.GCP_SQL_CONNECTION_NAME }}" \
-          --set-env-vars="GCP_SQL_USER=${{ secrets.GCP_SQL_USER }}" \
-          --set-env-vars="GCP_SQL_PASSWORD=${{ secrets.GCP_SQL_PASSWORD }}" \
-          --set-env-vars="GCP_SQL_NAME=${{ secrets.GCP_SQL_NAME }}" > /dev/null
+          --env-vars-file=env.yaml > /dev/null
 
       - name: Google Cloud Run Service URL
         if: ${{ steps.filter.outputs.backend == 'true' && steps.filter.outputs.frontend == 'true' }}
