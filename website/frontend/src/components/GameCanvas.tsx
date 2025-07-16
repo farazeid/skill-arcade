@@ -4,12 +4,14 @@ type GameCanvasProps = {
   frame: string;
   isGameOver: boolean;
   isGameWon: boolean;
+  onNewGame: () => void;
 };
 
 const GameCanvas: React.FC<GameCanvasProps> = ({
   frame,
   isGameOver,
   isGameWon,
+  onNewGame,
 }) => {
   return (
     <div id="gameContainer" className="relative w-full max-w-lg">
@@ -22,7 +24,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           {!isGameWon && (
             <h2 className="text-4xl font-bold text-white">GAME OVER</h2>
           )}
-          <div className="text-white">Refresh the page to restart</div>
+          <button
+            onClick={onNewGame}
+            className="mt-4 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+          >
+            New Game
+          </button>
         </div>
       )}
     </div>

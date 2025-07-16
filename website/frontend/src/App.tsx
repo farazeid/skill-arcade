@@ -25,6 +25,7 @@ function App() {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [gameDisplayName, setGameDisplayName] = useState("");
   const [gameId, setGameId] = useState<string | null>(null);
+  const [gameInstanceKey, setGameInstanceKey] = useState<number>(0);
 
   const socket = useRef<WebSocket | null>(null);
   const clientFrameCount = useRef(0);
@@ -71,6 +72,7 @@ function App() {
       setGameId(gameId);
       setGameDisplayName(game.display_name);
     }
+    setGameInstanceKey((prevKey) => prevKey + 1);
   };
 
   useEffect(() => {
@@ -136,7 +138,7 @@ function App() {
       cancelAnimationFrame(animationFrameId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedGame, currentUser]);
+  }, [selectedGame, currentUser, gameInstanceKey]);
 
   // Moved out of useEffect to avoid re-creating it on every render
   const updateFpsDisplay = () => {
@@ -213,6 +215,7 @@ function App() {
               frame={frame}
               isGameOver={isGameOver}
               isGameWon={isGameWon}
+              onNewGame={() => gameId && handleGameSelected(gameId)}
             />
             <div className="w-64">
               <ServerStats
