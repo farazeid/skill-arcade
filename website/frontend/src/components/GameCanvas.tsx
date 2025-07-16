@@ -26,7 +26,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           )}
           <button
             onClick={onNewGame}
-            className="mt-4 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+            className="mt-4 bg-green-500 hover:bg-green-400 text-white font-bold py-2 px-4 rounded"
           >
             New Game
           </button>
