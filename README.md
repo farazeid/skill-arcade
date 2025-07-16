@@ -8,6 +8,7 @@ Skill Arcade is a web-based platform for capturing and analysing human gameplay 
 - **Rich Data Collection:** Every action and observation is recorded, creating detailed episode logs that are invaluable for imitation learning and behavioural research.
 - **Asynchronous Data Pipeline:** A multi-worker asynchronous queue ensures that game performance remains high by uploading observations and database entries to the cloud without blocking the game loop.
 - **Extensible Game Environments:** Easily add new games by leveraging the [Gymnasium](https://gymnasium.farama.org/) interface. Includes classic Atari games and custom environments like the Tower of Hanoi.
+- **User Authentication:** Sign up and log in with email, with all user data managed through Firebase Authentication. Currently, authentication is password-less as the website is intended for research purposes-only.
 - **Automated Cloud Deployment:** A sophisticated CI/CD pipeline using GitHub Actions automatically builds, tests, and deploys the entire stack to Google Cloud and Firebase.
 - **Ephemeral Preview Environments:** Every pull request automatically spins up a fully functional, isolated preview environment for seamless review and testing.
 
@@ -24,45 +25,61 @@ The application is a monorepo with a decoupled frontend and backend, designed fo
 graph TD
     subgraph Browser
         A[
-            React Frontend on
-            Firebase Hosting
+            React Frontend
+            via Firebase Hosting
         ]
     end
 
     subgraph Google Cloud
         B[
-            FastAPI Backend on
-            Google Cloud Run
+            FastAPI Backend
+            via Google Cloud Run
         ]
         C[
-            PostgreSQL on
-            Google Cloud SQL
+            PostgreSQL
+            via Google Cloud SQL
         ]
         D[
-            Game Observations in
-            Google Cloud Storage
+            Game Frames
+            via Google Cloud Storage
         ]
+    end
+
+    subgraph Firebase
+        F[Firebase Authentication]
     end
 
     subgraph GitHub
         E[GitHub Actions CI/CD]
     end
 
-    A -- HTTP GET /games --> B
-    A -- WebSocket /ws/{game_id} --> B
-    B -- Actions --> A
-    B -- Game Frames --> A
-    B -- Async Read/Write
-            Episodes + Transitions --> C
-    B -- Async Upload --> D
+    A -- Login --> F
+    F -- UID --> A
+
+    A <-- HTTP
+          GET /games --> B
+
+    A -- WebSocket
+          /ws/{game_id}?token={UID} --> B
+    A -- Actions
+          via WebSocket --> B
+    B -- Game Frames
+          via WebSocket --> A
+
+    B -- Async Write
+          Episodes + Transitions --> C
+    B -- Async Upload
+          Game Frames --> D
+
     E -- Deploy --> A
-    E -- Build & Deploy --> B
+    E -- Build + Deploy --> B
 
     style A fill:#fda200,stroke:#000000,stroke-width:1px
     style B fill:#009cfd,stroke:#000000,stroke-width:1px
-    style C fill:#fd5f55,stroke:#000000,stroke-width:1px
-    style D fill:#fd5f55,stroke:#000000,stroke-width:1px
+    style C fill:#009cfd,stroke:#000000,stroke-width:1px
+    style D fill:#009cfd,stroke:#000000,stroke-width:1px
     style E fill:#a2aaad,stroke:#000000,stroke-width:1px
+    style F fill:#fda200,stroke:#000000,stroke-width:1px
 ```
 
 ## **Tech Stack**
@@ -82,6 +99,7 @@ graph TD
     - Google Artifact Registry
   - Frontend:
     - Firebase Hosting
+    - Firebase Authentication
 
 ## **Getting Started**
 
@@ -126,6 +144,8 @@ GCP_SQL_USER="..."
 GCP_SQL_PASSWORD="..."
 
 UPLOADER_NUM_WORKERS="..."
+
+FIREBASE_CREDENTIALS={ ... }
 
 
 
