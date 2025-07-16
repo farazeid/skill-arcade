@@ -17,11 +17,6 @@ Skill Arcade is a web-based platform for capturing and analysing human gameplay 
 The application is a monorepo with a decoupled frontend and backend, designed for independent scaling and deployment on Google Cloud.
 
 ```mermaid
-%%{init: {"themeVariables": {
-  "fontFamily": "Comic Sans MS",
-  "fontSize": "1rem",
-}}}%%
-
 graph TD
     subgraph Browser
         A[
@@ -80,6 +75,54 @@ graph TD
     style D fill:#009cfd,stroke:#000000,stroke-width:1px
     style E fill:#a2aaad,stroke:#000000,stroke-width:1px
     style F fill:#fda200,stroke:#000000,stroke-width:1px
+```
+
+## **Database Schema**
+
+The database schema is defined using SQLModel and consists of four main tables: `User`, `Game`, `Episode`, and `Transition`. The relationships between these tables are designed to efficiently store and query gameplay data.
+
+```mermaid
+erDiagram
+    User {
+        string id PK
+        datetime time_created
+        datetime time_updated
+    }
+
+    Game {
+        string id PK
+        json config
+        datetime time_created
+    }
+
+    Episode {
+        uuid id PK
+        string user_id FK
+        string game_id FK
+        bigint seed
+        int n_steps
+        EpisodeStatus status
+        datetime time_created
+        datetime time_updated
+    }
+
+    Transition {
+        uuid id PK
+        uuid episode_id FK
+        int step
+        string obs_key
+        int action
+        float reward
+        string next_obs_key
+        bool terminated
+        bool truncated
+        json info
+        datetime time_created
+    }
+
+    User ||--o{ Episode : "has"
+    Game ||--o{ Episode : "has"
+    Episode ||--o{ Transition : "has"
 ```
 
 ## **Tech Stack**
