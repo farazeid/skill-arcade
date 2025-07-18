@@ -92,6 +92,7 @@ jobs:
           gcloud run deploy "${{ env.GCP_CLOUDRUN_NAME }}" \
           --image="${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}" \
           --region="${{ env.GCP_REGION }}" \
+          --min-instances=1 \
           --platform=managed \
           --allow-unauthenticated \
           --env-vars-file=env.yaml > /dev/null
