@@ -35,7 +35,8 @@ jobs:
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            backend:
+            all:
+              - ".github/workflows/**"
               - "website/backend/**"
             frontend:
               - "website/frontend/**"
@@ -51,17 +52,17 @@ jobs:
         uses: "google-github-actions/setup-gcloud@v2"
 
       - name: Google Cloud Docker Auth
-        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
+        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.all == 'true' }}
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
 
       - name: Docker Build
-        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
+        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.all == 'true' }}
         run: |
           docker build --platform linux/amd64 -t "${{ env.TAGGED_DOCKER_IMAGE_NAME }}" .
         working-directory: ./website/backend
 
       - name: Google Cloud Artifacts Delete Current
-        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
+        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.all == 'true' }}
         run: |
           if gcloud artifacts docker images describe \
               ${{ env.TAGGED_DOCKER_IMAGE_NAME }} >/dev/null 2>&1; then
@@ -72,7 +73,7 @@ jobs:
           fi
 
       - name: Google Cloud Artifacts Push
-        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
+        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.all == 'true' }}
         run: |
           docker push "${{ env.TAGGED_DOCKER_IMAGE_NAME }}"
         working-directory: ./website/backend
@@ -103,7 +104,7 @@ jobs:
           cat env.yaml
 
       - name: Google Cloud Run Deploy
-        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.backend == 'true' }}
+        if: ${{ github.event.action == 'opened' || github.event.action == 'reopened' || steps.filter.outputs.all == 'true' }}
         run: |
           gcloud run deploy "${{ env.GCP_CLOUDRUN_NAME }}" \
           --image="${{ env.TAGGED_DOCKER_IMAGE_NAME }}" \
