@@ -36,7 +36,7 @@ jobs:
               - "website/frontend/**"
 
       - name: Google Cloud Auth
-        if: ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.frontend == 'true' }}
+        # if: ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.frontend == 'true' }}
         id: auth
         uses: "google-github-actions/auth@v2"
         with:
@@ -44,15 +44,15 @@ jobs:
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Google Cloud SDK Init
-        if: ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.frontend == 'true' }}
+        # if: ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.frontend == 'true' }}
         uses: "google-github-actions/setup-gcloud@v2"
 
       - name: Google Cloud Docker Auth
-        if: ${{ steps.filter.outputs.backend == 'true' }}
+        # if: ${{ steps.filter.outputs.backend == 'true' }}
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
 
       - name: Docker Build & Google Cloud Artifacts Push
-        if: ${{ steps.filter.outputs.backend == 'true' }}
+        # if: ${{ steps.filter.outputs.backend == 'true' }}
         run: |
           docker build --platform linux/amd64 \
             -t "${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}" \
@@ -86,7 +86,7 @@ jobs:
           cat env.yaml
 
       - name: Google Cloud Run Deploy
-        if: ${{ steps.filter.outputs.backend == 'true' }}
+        # if: ${{ steps.filter.outputs.backend == 'true' }}
         run: |
           gcloud run deploy "${{ env.GCP_CLOUDRUN_NAME }}" \
           --image="${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}" \
@@ -96,7 +96,7 @@ jobs:
           --env-vars-file=env.yaml > /dev/null
 
       - name: Google Cloud Run Service URL
-        if: ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.frontend == 'true' }}
+        # if: ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.frontend == 'true' }}
         id: url
         run: |
           URL=$(gcloud run services describe ${{ env.GCP_CLOUDRUN_NAME }} --platform managed --region ${{ env.GCP_REGION }} --format 'value(status.url)')
@@ -107,7 +107,7 @@ jobs:
           echo "ws_url=$WS_URL" >> $GITHUB_OUTPUT
 
       - name: Build
-        if: ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.frontend == 'true' }}
+        # if: ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.frontend == 'true' }}
         run: |
           npm ci && npm run build
         env:
@@ -123,7 +123,7 @@ jobs:
         working-directory: ./website/frontend
 
       - name: Firebase Hosting Deploy
-        if: ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.frontend == 'true' }}
+        # if: ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.frontend == 'true' }}
         id: deploy_hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
