@@ -203,7 +203,19 @@ VITE_FIREBASE_APP_ID="..."
 VITE_FIREBASE_MEASUREMENT_ID="..."
 ```
 
-Refer to this [GitHub Gist](https://gist.github.com/farazeid/065c5c2b2b0d24ba48f1c53999a48576) to setup Google Cloud services via `gcloud` CLI.
+Refer to this [GitHub Gist](https://gist.github.com/farazeid/065c5c2b2b0d24ba48f1c53999a48576) to setup Google Cloud services via `gcloud` CLI for:
+
+- Google Cloud SQL
+- Google Cloud Storage
+
+4. Instantiate Database:
+
+```bash
+cd website/backend
+uv sync
+# cloud-sql-proxy --address 0.0.0.0 --port 1234 $GCP_SQL_CONNECTION_NAME  # in separate terminal; for Google Cloud SQL
+alembic upgrade head
+```
 
 ### **3. Run The Backend Server**
 
