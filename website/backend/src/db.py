@@ -17,6 +17,46 @@ connector: Connector | None = None
 engine: AsyncEngine
 
 
+async def init() -> None:
+    global engine, connector
+    if (
+        (connection_name := os.getenv("GCP_SQL_CONNECTION_NAME"))
+        and (db_user := os.getenv("GCP_SQL_USER"))
+        and (db_pass := os.getenv("GCP_SQL_PASSWORD"))
+        and (db_name := os.getenv("GCP_SQL_NAME"))
+    ):
+        db_driver = "asyncpg"
+
+        connector = await create_async_connector()
+
+        async def getconn() -> asyncpg.Connection:
+            if connector is None:
+                raise RuntimeError("Connector is not initialized.")
+
+            conn = await connector.connect_async(
+                instance_connection_string=connection_name,
+                driver=db_driver,
+                user=db_user,
+                password=db_pass,
+                db=db_name,
+            )
+            return conn
+
+        engine = create_async_engine(
+            "postgresql+asyncpg://",
+            async_creator=getconn,
+            echo=False,
+        )
+
+    else:  # local
+        sqlite_file_name = "db.db"
+        connection_name = f"sqlite+aiosqlite:///{sqlite_file_name}"
+        engine = create_async_engine(
+            connection_name,
+            echo=True,
+        )
+
+
 class User(SQLModel, table=True):
     id: str = Field(primary_key=True, index=True)
     time_created: datetime = Field(
@@ -104,43 +144,3 @@ class Transition(SQLModel, table=True):
     )
 
     episode: Episode = Relationship(back_populates="transitions")
-
-
-async def init():
-    global engine, connector
-    if (
-        (CONNECTION_NAME := os.getenv("GCP_SQL_CONNECTION_NAME"))
-        and (DB_USER := os.getenv("GCP_SQL_USER"))
-        and (DB_PASS := os.getenv("GCP_SQL_PASSWORD"))
-        and (DB_NAME := os.getenv("GCP_SQL_NAME"))
-    ):
-        DB_DRIVER = "asyncpg"
-
-        connector = await create_async_connector()
-
-        async def getconn() -> asyncpg.Connection:
-            conn = await connector.connect_async(
-                CONNECTION_NAME,
-                DB_DRIVER,
-                user=DB_USER,
-                password=DB_PASS,
-                db=DB_NAME,
-            )
-            return conn
-
-        engine = create_async_engine(
-            "postgresql+asyncpg://",
-            async_creator=getconn,
-            echo=False,
-        )
-
-    else:  # local
-        sqlite_file_name = "db.db"
-        CONNECTION_NAME = f"sqlite+aiosqlite:///{sqlite_file_name}"
-        engine = create_async_engine(
-            CONNECTION_NAME,
-            echo=True,
-        )
-
-    async with engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
