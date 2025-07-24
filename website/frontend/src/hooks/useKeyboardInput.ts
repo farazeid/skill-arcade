@@ -21,7 +21,7 @@ export const useKeyboardInput = (
   const [controller, setController] = useState<Controller | null>(null);
   const pressedKeys = useRef(new Set<string>());
   const lastSentAction = useRef<number | null>(null);
-  const actionTimer = useRef<number | null>(null);
+  const continuousActionInterval = useRef<number | null>(null);
   const fromKey = useRef<string | null>(null); // For sequential input
 
   useEffect(() => {
@@ -132,16 +132,16 @@ export const useKeyboardInput = (
       pressedKeys.current.clear();
 
       if (!isSequential) {
-        actionTimer.current = window.setInterval(
+        continuousActionInterval.current = window.setInterval(
           updateAndSendContinuousAction,
           1000 / 30
         ); // 30 FPS
         updateAndSendContinuousAction(); // Initial action
       }
     } else {
-      if (actionTimer.current) {
-        clearInterval(actionTimer.current);
-        actionTimer.current = null;
+      if (continuousActionInterval.current) {
+        clearInterval(continuousActionInterval.current);
+        continuousActionInterval.current = null;
       }
       pressedKeys.current.clear();
       fromKey.current = null;
@@ -150,9 +150,9 @@ export const useKeyboardInput = (
       }
     }
     return () => {
-      if (actionTimer.current) {
-        clearInterval(actionTimer.current);
-        actionTimer.current = null;
+      if (continuousActionInterval.current) {
+        clearInterval(continuousActionInterval.current);
+        continuousActionInterval.current = null;
       }
     };
   }, [isGameActive, socket, controller]);
