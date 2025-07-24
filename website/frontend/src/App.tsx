@@ -88,7 +88,10 @@ function App() {
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host =
         import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}`;
-      const wsUrl = `${host}/ws/${selectedGame}?token=${idToken}`;
+      const fromPublicWebsite =
+        window.location.hostname ===
+        import.meta.env.VITE_PUBLIC_WEBSITE_HOSTNAME;
+      const wsUrl = `${host}/ws/${selectedGame}?token=${idToken}&from_public_website=${fromPublicWebsite}`;
 
       socket.current = new WebSocket(wsUrl);
 
