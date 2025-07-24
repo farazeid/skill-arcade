@@ -23,15 +23,18 @@ function App() {
     []
   );
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
-  const [gameDisplayName, setGameDisplayName] = useState("");
+  const [gameDisplayName, setGameDisplayName] = useState<string>("");
   const [gameId, setGameId] = useState<string | null>(null);
   const [gameInstanceKey, setGameInstanceKey] = useState<number>(0);
+  const [timeObsShown, setTimeObsShown] = useState<number>(
+    performance.timeOrigin + performance.now()
+  );
 
   const socket = useRef<WebSocket | null>(null);
   const clientFrameCount = useRef(0);
   const lastFpsTime = useRef(performance.now());
 
-  useKeyboardInput(socket, !!selectedGame && !isGameOver, gameId);
+  useKeyboardInput(socket, !!selectedGame && !isGameOver, gameId, timeObsShown);
 
   useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL || "";
@@ -101,6 +104,11 @@ function App() {
         // Update state from server message
         setServerFps(state.serverFps || 0);
         setFrame(`data:image/jpeg;base64,${state.frame}`);
+
+        requestAnimationFrame(() => {
+          const timeObsShown = performance.timeOrigin + performance.now();
+          setTimeObsShown(timeObsShown);
+        });
 
         if (state.gameName && !gameDisplayName) {
           setGameDisplayName(state.gameName);

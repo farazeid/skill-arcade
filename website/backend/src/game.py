@@ -3,6 +3,7 @@ import base64
 import json
 import logging
 import uuid
+from datetime import datetime
 from typing import Any
 
 import ale_py  # noqa: F401
@@ -105,6 +106,8 @@ async def game_loop(
     server_fps = 0.0
 
     action = 0
+    time_obs_shown = datetime.now()
+    time_action_input = datetime.now()
     while not game.game_over:
         if not game.realtime:
             action = None
@@ -120,7 +123,15 @@ async def game_loop(
                     message = json.loads(message_str)
 
                     if message.get("type") == "action" and "action" in message:
-                        action = message["action"]
+                        action = message.get("action")
+                        time_obs_shown = message.get("timeObsShown")
+                        time_action_input = message.get("timeActionInput")
+
+                        time_obs_shown = time_obs_shown / 1000
+                        time_action_input = time_action_input / 1000
+
+                        time_obs_shown = datetime.fromtimestamp(time_obs_shown)
+                        time_action_input = datetime.fromtimestamp(time_action_input)
 
                 except TimeoutError:
                     break
@@ -146,6 +157,8 @@ async def game_loop(
                 terminated=game.terminated,
                 truncated=game.truncated,
                 info=game.info,
+                time_obs_shown=time_obs_shown,
+                time_action_input=time_action_input,
             )
 
             uploader.put(
