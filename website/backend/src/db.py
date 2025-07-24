@@ -121,6 +121,7 @@ class Episode(SQLModel, table=True):
             onupdate=datetime.now(UTC),
         ),
     )
+    from_public_website: bool
 
     user: User = Relationship(back_populates="episodes")
     game: Game = Relationship(back_populates="episodes")

@@ -71,6 +71,7 @@ def list_games() -> list[dict[str, str]]:
 async def websocket_endpoint(
     websocket: WebSocket,
     game_id: str,
+    from_public_website: bool,
     token: str | None = None,
 ) -> None:
     """Handle a new WebSocket connection, creating as unique game for it."""
@@ -123,7 +124,7 @@ async def websocket_endpoint(
         initial_state = game.get_init_state()
         await websocket.send_text(json.dumps(initial_state))
 
-        db_episode: db.Episode = None
+        db_episode: db.Episode
         async with AsyncSession(
             db.engine,
             expire_on_commit=False,
@@ -132,6 +133,7 @@ async def websocket_endpoint(
                 user_id=user.id,
                 game_id=db_game.id,
                 seed=seed,
+                from_public_website=from_public_website,
             )
             session.add(db_episode)
             await session.commit()
