@@ -142,5 +142,7 @@ class Transition(SQLModel, table=True):
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True)),
     )
+    time_obs_shown: datetime = Field(sa_column=Column(DateTime(timezone=True)))
+    time_action_input: datetime = Field(sa_column=Column(DateTime(timezone=True)))
 
     episode: Episode = Relationship(back_populates="transitions")

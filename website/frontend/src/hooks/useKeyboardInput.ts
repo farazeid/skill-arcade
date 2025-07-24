@@ -16,7 +16,8 @@ type Controller = ContinuousActionController | SequentialActionController;
 export const useKeyboardInput = (
   socket: React.MutableRefObject<WebSocket | null>,
   isGameActive: boolean,
-  gameId: string | null
+  gameId: string | null,
+  timeObsShown: number
 ) => {
   const [controller, setController] = useState<Controller | null>(null);
   const pressedKeys = useRef(new Set<string>());
@@ -41,24 +42,35 @@ export const useKeyboardInput = (
     };
   }, [gameId]);
 
-  const sendAction = (action: number | null) => {
+  const sendAction = (
+    action: number | null,
+    timeObsShown: number,
+    timeActionInput: number
+  ) => {
     if (
       action !== null &&
       socket.current &&
       socket.current.readyState === WebSocket.OPEN &&
       action !== lastSentAction.current
     ) {
-      socket.current.send(JSON.stringify({ type: "action", action }));
+      const message = {
+        type: "action",
+        action: action,
+        timeObsShown: timeObsShown,
+        timeActionInput: timeActionInput,
+      };
+      socket.current.send(JSON.stringify(message));
       lastSentAction.current = action;
     }
   };
 
   const updateAndSendContinuousAction = () => {
     if (controller) {
+      const timeActionInput = performance.timeOrigin + performance.now();
       const action = (
         controller.determineAction as (keys: Set<string>) => number
       )(pressedKeys.current);
-      sendAction(action);
+      sendAction(action, timeObsShown, timeActionInput);
     }
   };
 
@@ -100,13 +112,14 @@ export const useKeyboardInput = (
           // This is the "to" key being released.
           if (fromKey.current && pressedKeys.current.has(fromKey.current)) {
             // Only send action if the "from" key is still held down.
+            const timeActionInput = performance.timeOrigin + performance.now();
             const action = (
               controller.determineAction as (
                 from: string,
                 to: string
               ) => number | null
             )(fromKey.current, e.key);
-            sendAction(action);
+            sendAction(action, timeObsShown, timeActionInput);
           }
         }
       } else {
@@ -121,7 +134,7 @@ export const useKeyboardInput = (
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [isGameActive, controller]);
+  }, [isGameActive, controller, timeObsShown]);
 
   useEffect(() => {
     if (isGameActive && controller) {
@@ -138,17 +151,8 @@ export const useKeyboardInput = (
         ); // 30 FPS
         updateAndSendContinuousAction(); // Initial action
       }
-    } else {
-      if (continuousActionInterval.current) {
-        clearInterval(continuousActionInterval.current);
-        continuousActionInterval.current = null;
-      }
-      pressedKeys.current.clear();
-      fromKey.current = null;
-      if (socket.current?.readyState === WebSocket.OPEN) {
-        sendAction(null);
-      }
     }
+
     return () => {
       if (continuousActionInterval.current) {
         clearInterval(continuousActionInterval.current);
