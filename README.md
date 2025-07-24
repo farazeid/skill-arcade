@@ -194,6 +194,7 @@ FIREBASE_CREDENTIALS={ ... }
 
 # website/frontend/.env
 
+VITE_PUBLIC_WEBSITE_HOSTNAME=...  # no quotation marks
 VITE_FIREBASE_API_KEY="..."
 VITE_FIREBASE_AUTH_DOMAIN="..."
 VITE_FIREBASE_PROJECT_ID="..."
