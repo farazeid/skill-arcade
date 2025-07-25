@@ -60,17 +60,16 @@ async def init() -> None:
 class User(SQLModel, table=True):
     id: str = Field(primary_key=True, index=True)
     time_created: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
         sa_column=Column(
             DateTime(timezone=True),
-            onupdate=datetime.now(UTC),
+            default=lambda: datetime.now(UTC),
         ),
     )
     time_updated: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
         sa_column=Column(
             DateTime(timezone=True),
-            onupdate=datetime.now(UTC),
+            default=lambda: datetime.now(UTC),
+            onupdate=lambda: datetime.now(UTC),
         ),
     )
 
@@ -81,10 +80,9 @@ class Game(SQLModel, table=True):
     id: str = Field(primary_key=True, index=True)
     config: dict = Field(sa_column=Column(JSON))
     time_created: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
         sa_column=Column(
             DateTime(timezone=True),
-            onupdate=datetime.now(UTC),
+            default=lambda: datetime.now(UTC),
         ),
     )
 
@@ -108,17 +106,16 @@ class Episode(SQLModel, table=True):
         default=EpisodeStatus.INCOMPLETE,
     )
     time_created: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
         sa_column=Column(
             DateTime(timezone=True),
-            onupdate=datetime.now(UTC),
+            default=lambda: datetime.now(UTC),
         ),
     )
     time_updated: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
         sa_column=Column(
             DateTime(timezone=True),
-            onupdate=datetime.now(UTC),
+            default=lambda: datetime.now(UTC),
+            onupdate=lambda: datetime.now(UTC),
         ),
     )
     from_public_website: bool
@@ -140,8 +137,10 @@ class Transition(SQLModel, table=True):
     truncated: bool
     info: dict = Field(sa_column=Column(JSON))
     time_created: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
-        sa_column=Column(DateTime(timezone=True)),
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(UTC),
+        ),
     )
     time_obs_shown: datetime = Field(sa_column=Column(DateTime(timezone=True)))
     time_action_input: datetime = Field(sa_column=Column(DateTime(timezone=True)))
