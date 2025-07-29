@@ -10,6 +10,7 @@ import ale_py  # noqa: F401
 import cv2
 import gymnasium as gym
 from fastapi import WebSocket, WebSocketDisconnect
+from tetris_gymnasium.envs.tetris import Tetris  # noqa: F401
 
 import src.games  # Import to ensure Gymnasium environments are registered
 from src.db import Transition
