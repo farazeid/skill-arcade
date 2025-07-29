@@ -28,6 +28,7 @@ class Game:
         render: bool = False,
         realtime: bool = True,
         tickrate: float = 1 / 60,
+        noop_action: int = 0,
     ) -> None:
         self.seed = seed
         self.display_name = display_name
@@ -43,6 +44,7 @@ class Game:
         self.render = render
         self.realtime = realtime
         self.tickrate = tickrate
+        self.noop_action = noop_action
 
         self.n_steps = 0
         self.game_over = False
@@ -108,7 +110,7 @@ async def game_loop(
     frame_count = 0
     server_fps = 0.0
 
-    action = 0
+    action = game.noop_action
     time_obs_shown = datetime.now()
     time_action_input = datetime.now()
 

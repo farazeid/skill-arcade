@@ -8,3 +8,5 @@ env:
 render: true
 
 tickrate: 0.5 # 1 / 2
+
+noop_action: 7
