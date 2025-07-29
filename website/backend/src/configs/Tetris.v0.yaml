@@ -6,3 +6,5 @@ env:
     render_mode: rgb_array
 
 render: true
+
+tickrate: 0.5 # 1 / 2

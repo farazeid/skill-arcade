@@ -16,7 +16,7 @@ import src.games  # Import to ensure Gymnasium environments are registered
 from src.db import Transition
 from src.uploader import Uploader
 
-TICK_RATE = 1 / 60  # Aim for 60 FPS
+SERVER_TICKRATE = 1 / 60  # 60 FPS
 
 
 class Game:
@@ -27,6 +27,7 @@ class Game:
         env: dict,
         render: bool = False,
         realtime: bool = True,
+        tickrate: float = 1 / 60,
     ) -> None:
         self.seed = seed
         self.display_name = display_name
@@ -41,6 +42,7 @@ class Game:
 
         self.render = render
         self.realtime = realtime
+        self.tickrate = tickrate
 
         self.n_steps = 0
         self.game_over = False
@@ -109,6 +111,8 @@ async def game_loop(
     action = 0
     time_obs_shown = datetime.now()
     time_action_input = datetime.now()
+
+    last_step_time = loop.time()
     while not game.game_over:
         if not game.realtime:
             action = None
@@ -142,45 +146,49 @@ async def game_loop(
 
             # If Hanoi, don't tick server until valid action received
             if not game.realtime and action is None:
-                await asyncio.sleep(TICK_RATE)
+                await asyncio.sleep(SERVER_TICKRATE)
                 continue
 
-            obs = game.obs
-            game.step(action)
-            next_obs = game.obs
-
-            # Create Transition DB entry
-            transition = Transition(
-                episode_id=episode_id,
-                step=game.n_steps,
-                action=action,
-                reward=game.reward,
-                terminated=game.terminated,
-                truncated=game.truncated,
-                info=game.info,
-                time_obs_shown=time_obs_shown,
-                time_action_input=time_action_input,
-            )
-
-            uploader.put(
-                transition,
-                obs,
-                next_obs if not game.terminated else None,
-            )
-
-            # --- FPS Calculation ---
-            frame_count += 1
             current_time = loop.time()
-            if current_time - last_fps_time >= 1.0:
-                server_fps = frame_count / (current_time - last_fps_time)
-                frame_count = 0
-                last_fps_time = current_time
+            if current_time - last_step_time >= game.tickrate:
+                last_step_time = current_time
+                obs = game.obs
+                game.step(action)
+                next_obs = game.obs
 
-            # Send the new state to the client
-            state = game.get_state()
-            state["gameWon"] = game.won
-            state["serverFps"] = round(server_fps, 1)
-            await websocket.send_text(json.dumps(state))
+                # Create Transition DB entry
+                transition = Transition(
+                    episode_id=episode_id,
+                    step=game.n_steps,
+                    action=action,
+                    reward=game.reward,
+                    terminated=game.terminated,
+                    truncated=game.truncated,
+                    info=game.info,
+                    time_obs_shown=time_obs_shown,
+                    time_action_input=time_action_input,
+                    time_created=datetime.now(),
+                )
+
+                uploader.put(
+                    transition,
+                    obs,
+                    next_obs if not game.terminated else None,
+                )
+
+                # --- FPS Calculation ---
+                frame_count += 1
+                current_time = loop.time()
+                if current_time - last_fps_time >= 1.0:
+                    server_fps = frame_count / (current_time - last_fps_time)
+                    frame_count = 0
+                    last_fps_time = current_time
+
+                # Send the new state to the client
+                state = game.get_state()
+                state["gameWon"] = game.won
+                state["serverFps"] = round(server_fps, 1)
+                await websocket.send_text(json.dumps(state))
 
         except WebSocketDisconnect:
             logging.info("WS: Client disconnected; ending game loop.")
@@ -190,7 +198,7 @@ async def game_loop(
             logging.error(f"WS: Game loop error: {e}", exc_info=True)
             break
 
-        await asyncio.sleep(TICK_RATE)
+        await asyncio.sleep(SERVER_TICKRATE)
 
     # Final state update to make sure client knows game is over
     logging.info("WS: Game over; sending final state.")
