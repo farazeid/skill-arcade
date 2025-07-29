@@ -32,6 +32,7 @@ game = [
     "networkx>=3.5",
     "opencv-python>=4.11.0.86",
     "pygame>=2.6.1",
+    "tetris-gymnasium>=0.3.0",
 ]
 skeleton = [
     "fastapi[standard]>=0.115.12",

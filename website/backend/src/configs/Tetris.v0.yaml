@@ -1,0 +1,12 @@
+display_name: Tetris
+
+env:
+  make:
+    id: tetris_gymnasium/Tetris
+    render_mode: rgb_array
+
+render: true
+
+tickrate: 0.5 # 1 / 2
+
+noop_action: 7
