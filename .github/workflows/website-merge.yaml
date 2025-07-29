@@ -93,6 +93,7 @@ jobs:
           --image="${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}" \
           --region="${{ env.GCP_REGION }}" \
           --min-instances=1 \
+          --concurrency 1 \
           --platform=managed \
           --allow-unauthenticated \
           --env-vars-file=env.yaml > /dev/null

@@ -109,6 +109,7 @@ jobs:
           gcloud run deploy "${{ env.GCP_CLOUDRUN_NAME }}" \
           --image="${{ env.TAGGED_DOCKER_IMAGE_NAME }}" \
           --region="${{ env.GCP_REGION }}" \
+          --concurrency 1 \
           --platform=managed \
           --allow-unauthenticated \
           --env-vars-file=env.yaml > /dev/null
