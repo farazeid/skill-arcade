@@ -96,7 +96,7 @@ async def websocket_endpoint(
     with open(game_config_path) as f:
         game_config = yaml.safe_load(f)
     seed = int(datetime.now(UTC).timestamp() * 1000)
-    game = Game(seed, **game_config)
+    game = await Game.create(seed, **game_config)
 
     db_game: db.Game = None
     async with AsyncSession(

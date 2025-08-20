@@ -24,7 +24,7 @@ class Game:
         self,
         seed: int,
         display_name: str,
-        env: dict,
+        env: gym.Env,
         render: bool = False,
         realtime: bool = True,
         tickrate: float = 1 / 60,
@@ -32,8 +32,7 @@ class Game:
     ) -> None:
         self.seed = seed
         self.display_name = display_name
-
-        self.env = gym.make(**env["make"])
+        self.env = env
 
         self.obs, self.info = self.env.reset(seed=seed)
         self.reward = 0.0
@@ -49,6 +48,19 @@ class Game:
         self.n_steps = 0
         self.game_over = False
         self.won = False
+
+    @classmethod
+    async def create(
+        cls,
+        seed: int,
+        display_name: str,
+        env: dict,
+        render: bool = False,
+        realtime: bool = True,
+    ) -> "Game":
+        """Asynchronous factory method to create a Game instance."""
+        env_instance = await asyncio.to_thread(gym.make, **env["make"])
+        return cls(seed, display_name, env_instance, render, realtime)
 
     def step(self, action: int) -> None:
         if self.game_over:
