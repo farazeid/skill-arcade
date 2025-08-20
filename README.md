@@ -162,54 +162,267 @@ cd skill-arcade
 
 The backend requires credentials for Google Cloud.
 
-1. Navigate to the backend directory:
+#### 1. Creat Google Cloud project
 
 ```bash
-cd website/backend
+gcloud projects create --name="skill-arcade"
+# Use [{project-id}] as project ID (Y/n)? Y
+
+export PROJECT_ID="{project-id}"
+export GCP_REGION="europe-west2"
+export GITHUB_REPO="{your-github-username}/{your-repo-name}"
+
+gcloud billing projects link ${PROJECT_ID} --billing-account XXXXXX-XXXXXX-XXXXXX
+
+gcloud services enable \
+  iam.googleapis.com \
+  iamcredentials.googleapis.com \
+  sts.googleapis.com \
+  artifactregistry.googleapis.com \
+  run.googleapis.com \
+  sqladmin.googleapis.com \
+  storage.googleapis.com \
+  firebase.googleapis.com
 ```
 
-2. Create a `.env` file:
+#### 2. IAM & Authentication
 
 ```bash
-touch .env
+export SERVICE_ACCOUNT_NAME="github-actions-runner"
+
+# Create the service account that GitHub Actions will use
+gcloud iam service-accounts create ${SERVICE_ACCOUNT_NAME} \
+  --display-name="GitHub Actions Runner SA"
+
+export SERVICE_ACCOUNT_EMAIL="${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+# Grant the necessary roles to the service account
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:${SERVICE_ACCOUNT_EMAIL}" \
+  --role="roles/run.admin" \
+  --role="roles/artifactregistry.writer" \
+  --role="roles/cloudsql.client" \
+  --role="roles/storage.objectAdmin" \
+  --role="roles/iam.serviceAccountUser"
+  # Cloud Run Admin: To deploy and manage the Cloud Run service
+  # Artifact Registry Writer: To push Docker images
+  # Cloud SQL Client: To allow the Cloud Run service to connect to the database
+  # Storage Object Admin: To read/write to the GCS bucket
+  # Service Account User: To allow Cloud Run to run using this service account's identity
+
+# Create a Workload Identity Pool
+gcloud iam workload-identity-pools create "github-pool" \
+  --location="global" \
+  --display-name="GitHub Actions Pool"
+
+# Create a Workload Identity Provider for your GitHub repository
+gcloud iam workload-identity-pools providers create-oidc "github-provider" \
+  --workload-identity-pool="github-pool" \
+  --location="global" \
+  --issuer-uri="https://token.actions.githubusercontent.com" \
+  --attribute-condition="assertion.repository == '${GITHUB_REPO}'" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository"
+
+# Allow authentications from your GitHub repository to impersonate the service account
+gcloud iam service-accounts add-iam-policy-binding ${SERVICE_ACCOUNT_EMAIL} \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="principalSet://iam.googleapis.com/${POOL_ID}/attribute.repository/${GITHUB_REPO}"
 ```
 
-3. Configure secrets in the `.env` file:
+#### 3. Google Artifact Registry
 
-```dotenv
-# website/backend/.env
+```bash
+export AR_REPO_NAME="skill-arcade"
 
-GCP_PROJECT_NAME="..."
-GCP_BUCKET_NAME="..."
-GCP_SQL_CONNECTION_NAME="..."
-GCP_SQL_NAME="..."
-GCP_SQL_USER="..."
-GCP_SQL_PASSWORD="..."
-
-UPLOADER_NUM_WORKERS="..."
-
-FIREBASE_CREDENTIALS={ ... }
-
-
-
-# website/frontend/.env
-
-VITE_PUBLIC_WEBSITE_HOSTNAME=...  # no quotation marks
-VITE_FIREBASE_API_KEY="..."
-VITE_FIREBASE_AUTH_DOMAIN="..."
-VITE_FIREBASE_PROJECT_ID="..."
-VITE_FIREBASE_STORAGE_BUCKET="..."
-VITE_FIREBASE_MESSAGING_SENDER_ID="..."
-VITE_FIREBASE_APP_ID="..."
-VITE_FIREBASE_MEASUREMENT_ID="..."
+# Create a Docker repository to store your backend container images.
+gcloud artifacts repositories create ${AR_REPO_NAME} \
+  --repository-format="docker" \
+  --location=${GCP_REGION} \
+  --description="Docker repository for backend images"
 ```
 
-Refer to this [GitHub Gist](https://gist.github.com/farazeid/065c5c2b2b0d24ba48f1c53999a48576) to setup Google Cloud services via `gcloud` CLI for:
+#### 4. Google Cloud SQL
 
-- Google Cloud SQL
-- Google Cloud Storage
+```bash
+# Generate a secure password for the database user
+export SQL_PASSWORD=$(openssl rand -base64 16)
 
-4. Instantiate Database:
+echo "Generated DB Password: ${SQL_PASSWORD}" # Save this for your GitHub secret
+
+export SQL_INSTANCE_NAME="db"
+
+gcloud sql instances create ${SQL_INSTANCE_NAME} \
+  --database-version="POSTGRES_17" \
+  --region=${GCP_REGION} \
+  --tier=db-perf-optimized-N-2
+
+# Wait X minutes while instance is initialised + backed-up
+
+export SQL_NAME="name"
+
+gcloud sql databases create ${SQL_NAME} --instance=${SQL_INSTANCE_NAME}
+
+export SQL_USER="user"
+
+gcloud sql users create ${SQL_USER} \
+  --instance=${SQL_INSTANCE_NAME} \
+  --password="${SQL_PASSWORD}"
+```
+
+#### 5. Google Cloud Storage
+
+```bash
+export BUCKET_NAME="${PROJECT_ID}-bucket"
+
+gcloud storage buckets create gs://${BUCKET_NAME} \
+  --location=${GCP_REGION}
+```
+
+#### 6. Link Firebase to Google Cloud project
+
+```bash
+# Create a new service account specifically for Firebase deployments
+gcloud iam service-accounts create firebase-deployer \
+  --display-name="Firebase Deployer SA"
+
+# Grant it Firebase Hosting Admin role
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member="serviceAccount:firebase-deployer@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/firebasehosting.admin"
+
+# Create and download the secret file to your current working directory
+gcloud iam service-accounts keys create firebase-credentials.json \
+  --iam-account="firebase-deployer@${PROJECT_ID}.iam.gserviceaccount.com"
+```
+
+#### 7. Setup Firebase via GUI
+
+NOTE: Do NOT close your terminal used in all of the previous steps yet.
+
+1. Link to Your Google Cloud Project
+
+   1. Go to the Firebase Console.
+   2. Click Add project.
+   3. Instead of creating a new project, select your existing GCP Project ID from the dropdown list.
+
+2. Set Up Firebase Authentication
+
+   1. Navigate to the Authentication section (under Build).
+   2. Click Get started.
+   3. In the Sign-in method tab, enable Email/Password.
+
+3. Enable Firebase Hosting
+
+   1. Navigate to the Hosting section (under Build).
+   2. Click Get started.
+   3. Follow the on-screen instructions. The CLI steps can be skipped since your GitHub Action handles the deployment. The main goal here is simply to activate the Hosting service on your project.
+
+4. Register Your Web App and Find Your Config Keys
+
+   1. Go to your Project Settings by clicking the cog icon ⚙️ next to Project Overview.
+   2. In the General tab, scroll down to the Your apps section.
+   3. Click on the Web icon (</>) to create a new web app.
+   4. Give your app a nickname (e.g., "skill-arcade"). You do not need to set up Firebase Hosting at this stage, as GitHub Actions handles it. You can untick that box.
+   5. The Firebase SDK snippet displays all the key-value pairs you need for your GitHub secrets in the next section.
+
+#### 8. Add Secrets to GitHub Repository
+
+Add via `Settings > Secrets and variables > Actions`
+
+```bash
+# GCP_PROJECT_ID
+echo ${PROJECT_ID}
+
+# GCP_SERVICE_ACCOUNT
+echo ${SERVICE_ACCOUNT_EMAIL}
+
+# GCP_WORKLOAD_IDENTITY_PROVIDER
+echo $(gcloud iam workload-identity-pools providers describe "github-provider" --location="global" --workload-identity-pool="github-pool" --format="value(name)")
+
+# GCP_SQL_CONNECTION_NAME
+gcloud sql instances describe ${SQL_INSTANCE_NAME} --format="value(connectionName)"
+
+# GCP_SQL_NAME
+echo ${SQL_NAME}
+
+# GCP_SQL_PASSWORD
+echo ${SQL_PASSWORD}
+
+# GCP_SQL_USER
+echo ${SQL_USER}
+
+# GCP_BUCKET_NAME
+echo ${BUCKET_NAME}
+
+# FIREBASE_CREDENTIALS
+# Copy + paste contents of firebase-credentials.json
+
+# FIREBASE_SERVICE_ACCOUNT
+# Copy + paste contents of firebase-credentials.json
+
+# FIREBASE_PROJECT_ID
+echo ${PROJECT_ID}
+
+# VITE_FIREBASE_API_KEY
+# Copy + paste apiKey from the Firebase SDK snippet
+
+# VITE_FIREBASE_AUTH_DOMAIN
+# Copy + paste authDomain from the Firebase SDK snippet
+
+# VITE_FIREBASE_PROJECT_ID
+# Copy + paste projectId from the Firebase SDK snippet
+
+# VITE_FIREBASE_STORAGE_BUCKET
+# Copy + paste storageBucket from the Firebase SDK snippet
+
+# VITE_FIREBASE_MESSAGING_SENDER_ID
+# Copy + paste messagingSenderId from the Firebase SDK snippet
+
+# VITE_FIREBASE_APP_ID
+# Copy + paste appId from the Firebase SDK snippet
+
+# VITE_FIREBASE_MEASUREMENT_ID
+# Copy + paste measurementId from the Firebase SDK snippet
+
+# VITE_PUBLIC_WEBSITE_HOSTNAME
+# Not necessary so OK to ignore
+
+# UPLOADER_NUM_WORKERS
+# 16
+```
+
+#### 9. Add Secrets to Local Repository:
+
+```bash
+# Create `.env`s
+cd website/backend && touch .env
+
+# GCP_PROJECT_NAME="..."
+# GCP_BUCKET_NAME="..."
+# GCP_SQL_CONNECTION_NAME="..."
+# GCP_SQL_NAME="..."
+# GCP_SQL_USER="..."
+# GCP_SQL_PASSWORD="..."
+
+# UPLOADER_NUM_WORKERS="..."
+
+# FIREBASE_CREDENTIALS={ ... }
+
+cd ../..
+
+cd website/frontend && touch .env
+
+# VITE_PUBLIC_WEBSITE_HOSTNAME=...  # no quotation marks
+# VITE_FIREBASE_API_KEY="..."
+# VITE_FIREBASE_AUTH_DOMAIN="..."
+# VITE_FIREBASE_PROJECT_ID="..."
+# VITE_FIREBASE_STORAGE_BUCKET="..."
+# VITE_FIREBASE_MESSAGING_SENDER_ID="..."
+# VITE_FIREBASE_APP_ID="..."
+# VITE_FIREBASE_MEASUREMENT_ID="..."
+```
+
+### **3. Instantiate Database**
 
 ```bash
 cd website/backend
@@ -218,7 +431,7 @@ uv sync
 alembic upgrade head
 ```
 
-### **3. Run The Backend Server**
+### **4. Run The Backend Server**
 
 ```bash
 cd website/backend
@@ -228,7 +441,7 @@ uv run uvicorn src.main:app --port 8080 --reload
 
 The backend server will be available at http://localhost:8080.
 
-### **4. Run The Frontend Application**
+### **5. Run The Frontend Application**
 
 1. Open a new terminal and navigate to the frontend directory:
 
