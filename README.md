@@ -2,6 +2,10 @@
 
 Skill Arcade is a web-based platform for capturing and analysing human gameplay data from classic reinforcement learning environments. It provides a real-time, low-latency interface for researchers to collect high-quality datasets of human skill, which can be used to study skill acquisition and build more capable AI agents.
 
+## Website Demo
+
+https://github.com/user-attachments/assets/731d747d-4a71-43f0-9b9d-eb2c47252d8c
+
 ## **Key Features**
 
 - **Real-Time Gameplay:** Play classic Atari and custom games in the browser with a responsive, low-latency experience powered by a WebSocket-based architecture.
