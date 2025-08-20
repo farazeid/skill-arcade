@@ -2,9 +2,17 @@
 
 Skill Arcade is a web-based platform for capturing and analysing human gameplay data from classic reinforcement learning environments. It provides a real-time, low-latency interface for researchers to collect high-quality datasets of human skill, which can be used to study skill acquisition and build more capable AI agents.
 
+<br>
+<br>
+<br>
+
 ## Website Demo
 
 https://github.com/user-attachments/assets/731d747d-4a71-43f0-9b9d-eb2c47252d8c
+
+<br>
+<br>
+<br>
 
 ## **Key Features**
 
@@ -15,6 +23,10 @@ https://github.com/user-attachments/assets/731d747d-4a71-43f0-9b9d-eb2c47252d8c
 - **User Authentication:** Sign up and log in with email, with all user data managed through Firebase Authentication. Currently, authentication is password-less as the website is intended for research purposes-only.
 - **Automated Cloud Deployment:** A sophisticated CI/CD pipeline using GitHub Actions automatically builds, tests, and deploys the entire stack to Google Cloud and Firebase.
 - **Ephemeral Preview Environments:** Every pull request automatically spins up a fully functional, isolated preview environment for seamless review and testing.
+
+<br>
+<br>
+<br>
 
 ## **Architecture Overview**
 
@@ -81,6 +93,10 @@ graph TD
     style F fill:#fda200,stroke:#000000,stroke-width:1px
 ```
 
+<br>
+<br>
+<br>
+
 ## **Database Schema**
 
 The database schema is defined using SQLModel and consists of four main tables: `User`, `Game`, `Episode`, and `Transition`. The relationships between these tables are designed to efficiently store and query gameplay data.
@@ -129,6 +145,10 @@ erDiagram
     Episode ||--o{ Transition : "has"
 ```
 
+<br>
+<br>
+<br>
+
 ## **Tech Stack**
 
 - Code:
@@ -147,6 +167,10 @@ erDiagram
   - Frontend:
     - Firebase Hosting
     - Firebase Authentication
+   
+<br>
+<br>
+<br>
 
 ## **Getting Started**
 
@@ -155,12 +179,16 @@ erDiagram
 - [uv](https://github.com/astral-sh/uv) for Python
 - [Node.js](https://nodejs.org/en/) and [npm](https://www.npmjs.com/) for React
 
+<br>
+
 ### **1. Clone the repository**
 
 ```bash
 git clone https://github.com/farazeid/skill-arcade.git
 cd skill-arcade
 ```
+
+<br>
 
 ### **2. Configure Backend Secrets**
 
@@ -426,6 +454,8 @@ cd website/frontend && touch .env
 # VITE_FIREBASE_MEASUREMENT_ID="..."
 ```
 
+<br>
+
 ### **3. Instantiate Database**
 
 ```bash
@@ -434,6 +464,8 @@ uv sync
 # cloud-sql-proxy --address 0.0.0.0 --port 1234 $GCP_SQL_CONNECTION_NAME  # in separate terminal; for Google Cloud SQL
 alembic upgrade head
 ```
+
+<br>
 
 ### **4. Run The Backend Server**
 
@@ -444,6 +476,8 @@ uv run uvicorn src.main:app --port 8080 --reload
 ```
 
 The backend server will be available at http://localhost:8080.
+
+<br>
 
 ### **5. Run The Frontend Application**
 
@@ -461,6 +495,10 @@ npm run build; npm run dev
 ```
 
 The frontend will be available at http://localhost:5173 and will connect to your local backend.
+
+<br>
+<br>
+<br>
 
 ## **CI/CD Pipeline**
 
