@@ -99,8 +99,8 @@ class Game:
 async def game_loop(
     websocket: WebSocket,
     game: Game,
-    uploader: Uploader,
-    episode_id: uuid.UUID,
+    # uploader: Uploader,
+    # episode_id: uuid.UUID,
 ) -> None:
     """The main loop that drives a single game instance and sends updates."""
 
@@ -158,25 +158,25 @@ async def game_loop(
                 game.step(action)
                 next_obs = game.obs
 
-                # Create Transition DB entry
-                transition = Transition(
-                    episode_id=episode_id,
-                    step=game.n_steps,
-                    action=action,
-                    reward=game.reward,
-                    terminated=game.terminated,
-                    truncated=game.truncated,
-                    info=game.info,
-                    time_obs_shown=time_obs_shown,
-                    time_action_input=time_action_input,
-                    time_created=datetime.now(),
-                )
+                # # Create Transition DB entry
+                # transition = Transition(
+                #     episode_id=episode_id,
+                #     step=game.n_steps,
+                #     action=action,
+                #     reward=game.reward,
+                #     terminated=game.terminated,
+                #     truncated=game.truncated,
+                #     info=game.info,
+                #     time_obs_shown=time_obs_shown,
+                #     time_action_input=time_action_input,
+                #     time_created=datetime.now(),
+                # )
 
-                uploader.put(
-                    transition,
-                    obs,
-                    next_obs if not game.terminated else None,
-                )
+                # uploader.put(
+                #     transition,
+                #     obs,
+                #     next_obs if not game.terminated else None,
+                # )
 
                 # --- FPS Calculation ---
                 frame_count += 1
