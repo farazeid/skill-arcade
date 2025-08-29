@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
-import { loadController } from "../controllers/loader";
 
 type GameManualProps = {
   games: { id: string; display_name: string }[];
   onGameSelected: (gameId: string) => void;
   gameDisplayName: string;
   gameId: string | null;
+  showControls: boolean;
+  manualDescription: string;
+  onStartGame: () => void;
+  controlsVisible: boolean; // NEW: true after overlay is dismissed
 };
 
 const GameManual: React.FC<GameManualProps> = ({
@@ -13,22 +16,13 @@ const GameManual: React.FC<GameManualProps> = ({
   onGameSelected,
   gameDisplayName,
   gameId,
+  showControls,
+  manualDescription,
+  onStartGame,
+  controlsVisible,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [manualDescription, setManualDescription] = useState<string>("");
-
-  useEffect(() => {
-    if (gameId) {
-      loadController(gameId).then((controller) => {
-        if (controller) {
-          setManualDescription(controller.manualDescription);
-        }
-      });
-    } else {
-      setManualDescription("Select a game to start.");
-    }
-  }, [gameId]);
 
   const handleOptionClick = (gameId: string) => {
     onGameSelected(gameId);
@@ -104,11 +98,26 @@ const GameManual: React.FC<GameManualProps> = ({
         </div>
       )}
 
-      {gameId && (
-        <div className="text-left text-xs mt-4 text-white">
-          Controls:
-          <br />
-          <br />
+      {/* Controls Overlay (shown only when showControls is true) */}
+      {showControls && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-xl p-8 shadow-lg max-w-md w-full text-white text-left">
+            <h2 className="text-xl font-bold mb-4">Controls</h2>
+            <span style={{ whiteSpace: "pre-line" }}>{manualDescription}</span>
+            <button
+              className="mt-6 bg-green-500 hover:bg-green-400 text-white font-bold py-2 px-4 rounded w-full"
+              onClick={onStartGame}
+            >
+              Start Game
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Controls Sidebar (shown during gameplay) */}
+      {controlsVisible && gameId && (
+        <div className="mt-6 bg-gray-800 rounded-xl p-6 shadow-lg text-white text-left">
+          <h2 className="text-xl font-bold mb-4">Controls</h2>
           <span style={{ whiteSpace: "pre-line" }}>{manualDescription}</span>
         </div>
       )}
