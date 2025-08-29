@@ -4,6 +4,7 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
+import os
 
 import yaml
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -13,7 +14,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 import src.auth as auth
 import src.db as db
 from src.game import Game, game_loop
-from src.uploader import Uploader
+from src.uploader import CloudUploader, LocalUploader
 
 
 @asynccontextmanager
@@ -22,17 +23,26 @@ async def lifespan(app: FastAPI):  # noqa: ANN201
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s\n",
     )
-    # await db.init()
-    # auth.init()
-    # app.state.uploader = Uploader(db.engine)
+    await db.init()
+    auth.init()
+
+    if (
+        (os.getenv("GCP_SQL_CONNECTION_NAME"))
+        and (os.getenv("GCP_SQL_USER"))
+        and (os.getenv("GCP_SQL_PASSWORD"))
+        and (os.getenv("GCP_SQL_NAME"))
+    ):
+        app.state.uploader = CloudUploader(db.engine)
+    else:
+        app.state.uploader = LocalUploader(db.engine)
 
     # initialisation above
     yield  # app running
     # cleanup below
 
-    # await app.state.uploader.close()
-    # if db.connector:
-    #     await db.connector.close_async()
+    await app.state.uploader.close()
+    if db.connector:
+        await db.connector.close_async()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -81,14 +91,14 @@ async def websocket_endpoint(
         await websocket.close(code=1008)  # Policy Violation
         return
 
-    # async with AsyncSession(
-    #     db.engine,
-    # ) as session:
-    #     user: db.User | None = await auth.get_or_create_user(token, session)
-    #     if not user:
-    #         logging.error(f"WS: Invalid token: {token}")
-    #         await websocket.close(code=1008)  # Policy Violation
-    #         return
+    async with AsyncSession(
+        db.engine,
+    ) as session:
+        user: db.User | None = await auth.get_or_create_user(token, session)
+        if not user:
+            logging.error(f"WS: Invalid token: {token}")
+            await websocket.close(code=1008)  # Policy Violation
+            return
 
     game_config_path = GAME_CONFIGS_PATH / f"{game_id}.yaml"
     assert game_config_path.is_file(), f"Game config {game_config_path} not found"
@@ -98,24 +108,24 @@ async def websocket_endpoint(
     seed = int(datetime.now(UTC).timestamp() * 1000)
     game = Game(seed, **game_config)
 
-    # db_game: db.Game = None
-    # async with AsyncSession(
-    #     db.engine,
-    #     expire_on_commit=False,
-    # ) as session:
-    #     existing_db_game = await session.get(db.Game, game_id)
-    #     if not existing_db_game:
-    #         db_game = db.Game(
-    #             id=game_id,
-    #             config=game_config,
-    #         )
-    #         session.add(db_game)
-    #         await session.commit()
-    #         db_game = db_game
-    #         logging.info(f"DB: Game created: {game_id}")
-    #     else:
-    #         db_game = existing_db_game
-    #         logging.info(f"DB: Game exists: {game_id}")
+    db_game: db.Game = None
+    async with AsyncSession(
+        db.engine,
+        expire_on_commit=False,
+    ) as session:
+        existing_db_game = await session.get(db.Game, game_id)
+        if not existing_db_game:
+            db_game = db.Game(
+                id=game_id,
+                config=game_config,
+            )
+            session.add(db_game)
+            await session.commit()
+            db_game = db_game
+            logging.info(f"DB: Game created: {game_id}")
+        else:
+            db_game = existing_db_game
+            logging.info(f"DB: Game exists: {game_id}")
 
     await websocket.accept()
 
@@ -124,29 +134,29 @@ async def websocket_endpoint(
         initial_state = game.get_init_state()
         await websocket.send_text(json.dumps(initial_state))
 
-        # db_episode: db.Episode
-        # async with AsyncSession(
-        #     db.engine,
-        #     expire_on_commit=False,
-        # ) as session:
-        #     db_episode = db.Episode(
-        #         user_id=user.id,
-        #         game_id=db_game.id,
-        #         seed=seed,
-        #         from_public_website=from_public_website,
-        #     )
-        #     session.add(db_episode)
-        #     await session.commit()
-        #     db_episode = db_episode
-        #     logging.info(f"DB: Episode created: {db_episode.id}")
+        db_episode: db.Episode
+        async with AsyncSession(
+            db.engine,
+            expire_on_commit=False,
+        ) as session:
+            db_episode = db.Episode(
+                user_id=user.id,
+                game_id=db_game.id,
+                seed=seed,
+                from_public_website=from_public_website,
+            )
+            session.add(db_episode)
+            await session.commit()
+            db_episode = db_episode
+            logging.info(f"DB: Episode created: {db_episode.id}")
 
         # Start the game loop for this client, using the global uploader
         game_loop_task = asyncio.create_task(
             game_loop(
                 websocket,
                 game,
-                # app.state.uploader,
-                # db_episode.id,
+                app.state.uploader,
+                db_episode.id,
             )
         )
         await game_loop_task
@@ -155,24 +165,24 @@ async def websocket_endpoint(
         logging.info("WS: Client forcefully disconnected.")
 
     finally:
-        # assert db_episode, f"db_episode lost; currently: {db_episode}"
+        assert db_episode, f"db_episode lost; currently: {db_episode}"
 
-        # db_episode.n_steps = game.n_steps
-        # if game.won:
-        #     db_episode.status = db.EpisodeStatus.WON
-        # elif game.game_over:
-        #     db_episode.status = db.EpisodeStatus.LOST
-        # # else remains as default db.EpisodeStatus.INCOMPLETE
+        db_episode.n_steps = game.n_steps
+        if game.won:
+            db_episode.status = db.EpisodeStatus.WON
+        elif game.game_over:
+            db_episode.status = db.EpisodeStatus.LOST
+        # else remains as default db.EpisodeStatus.INCOMPLETE
 
-        # async with AsyncSession(
-        #     db.engine,
-        #     expire_on_commit=False,
-        # ) as session:
-        #     session.add(db_episode)
-        #     await session.commit()
-        #     logging.info(
-        #         f"DB: Episode updated: {db_episode}; n_steps: {db_episode.n_steps}; final status: {db_episode.status}"
-        #     )
+        async with AsyncSession(
+            db.engine,
+            expire_on_commit=False,
+        ) as session:
+            session.add(db_episode)
+            await session.commit()
+            logging.info(
+                f"DB: Episode updated: {db_episode}; n_steps: {db_episode.n_steps}; final status: {db_episode.status}"
+            )
 
         if game_loop_task:
             game_loop_task.cancel()

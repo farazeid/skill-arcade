@@ -15,7 +15,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 }) => {
   return (
     <div id="gameContainer" className="relative w-full max-w-lg">
-      <img id="gameImage" src={frame} alt="Game Screen" className="w-full" />
+      <img id="gameImage" src={frame} alt="Game Screen" className="w-full pixelated" />
       {isGameOver && (
         <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center">
           {isGameWon && (
