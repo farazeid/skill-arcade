@@ -80,6 +80,7 @@ jobs:
 
       - name: Prepare Environment File
         env:
+          SECRET_AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
           SECRET_UPLOADER_NUM_WORKERS: ${{ secrets.UPLOADER_NUM_WORKERS }}
           SECRET_GCP_BUCKET_NAME: ${{ secrets.GCP_BUCKET_NAME }}
           SECRET_GCP_SQL_CONNECTION_NAME: ${{ secrets.GCP_SQL_CONNECTION_NAME }}
@@ -88,6 +89,7 @@ jobs:
           SECRET_GCP_SQL_NAME: ${{ secrets.GCP_SQL_NAME }}
         run: |
           echo "Appending other secrets to env.yaml..."
+          echo "AUTH_JWT_SECRET: $SECRET_AUTH_JWT_SECRET" >> env.yaml
           echo "UPLOADER_NUM_WORKERS: $SECRET_UPLOADER_NUM_WORKERS" >> env.yaml
           echo "GCP_BUCKET_NAME: $SECRET_GCP_BUCKET_NAME" >> env.yaml
           echo "GCP_SQL_CONNECTION_NAME: $SECRET_GCP_SQL_CONNECTION_NAME" >> env.yaml
