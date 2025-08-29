@@ -186,6 +186,9 @@ cd skill-arcade
 
 <br>
 
+<details>
+  <summary>2. Configure Backend Secrets</summary>
+
 ### **2. Configure Backend Secrets**
 
 The backend requires credentials for Google Cloud.
@@ -409,6 +412,8 @@ cd website/frontend && touch .env
 ```
 
 <br>
+
+</details>
 
 ### **3. Instantiate Database**
 
