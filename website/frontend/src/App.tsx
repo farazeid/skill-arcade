@@ -5,6 +5,7 @@ import ServerStats from "./components/ServerStats.tsx";
 import AuthModal from "./components/AuthModal.tsx";
 import { useAuth } from "./context/AuthContext.tsx";
 import { useKeyboardInput } from "./hooks/useKeyboardInput.ts";
+import { loadController } from "./controllers/loader";
 
 function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -15,10 +16,11 @@ function App() {
   );
   const [isGameOver, setIsGameOver] = useState(false);
   const [isGameWon, setIsGameWon] = useState(false);
-  const [status, setStatus] = useState("Select a game to start");
+  const [status, setStatus] = useState("");
   const [statusColor, setStatusColor] = useState("text-gray-500");
   const [clientFps, setClientFps] = useState(0);
   const [serverFps, setServerFps] = useState(0);
+  const [showFps, setShowFps] = useState(false);
   const [games, setGames] = useState<{ id: string; display_name: string }[]>(
     []
   );
@@ -29,6 +31,10 @@ function App() {
   const [timeObsShown, setTimeObsShown] = useState<number>(
     performance.timeOrigin + performance.now()
   );
+  const [showControls, setShowControls] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(false);
+  const [pendingGameId, setPendingGameId] = useState<string | null>(null);
+  const [manualDescription, setManualDescription] = useState<string>("");
 
   const socket = useRef<WebSocket | null>(null);
   const clientFrameCount = useRef(0);
@@ -55,27 +61,66 @@ function App() {
       });
   }, []);
 
+  useEffect(() => {
+    (window as any).enableFpsCounter = () => setShowFps(true);
+    (window as any).disableFpsCounter = () => setShowFps(false);
+  }, []);
+
   const handleGameSelected = (gameId: string) => {
     if (!currentUser) {
       setIsAuthModalOpen(true);
       return;
     }
+
+    // Exit old game: close socket and reset state
     if (socket.current) {
       socket.current.close();
+      socket.current = null;
     }
-    // Reset game state
-    setFrame("https://placehold.co/160x210/000000/FFFFFF?text=Loading...");
+    setSelectedGame(null);
+    setGameId(null);
+    setGameDisplayName("");
     setIsGameOver(false);
-    setStatus("Connecting...");
+    setIsGameWon(false);
+    setFrame("https://placehold.co/160x210/transparent/transparent?text=");
+    setStatusColor("text-gray-500");
     setServerFps(0);
+    setClientFps(0);
 
-    setSelectedGame(gameId);
-    const game = games.find((g) => g.id === gameId);
-    if (game) {
-      setGameId(gameId);
-      setGameDisplayName(game.display_name);
+    // Now show controls for the new game
+    setPendingGameId(gameId);
+    setShowControls(true);
+    setControlsVisible(false);
+
+    // Load manual description
+    loadController(gameId).then((controller) => {
+      if (controller) {
+        setManualDescription(controller.manualDescription);
+      } else {
+        setManualDescription("No manual available.");
+      }
+    });
+  };
+
+  const handleStartGame = () => {
+    setShowControls(false);
+    setControlsVisible(true);
+    if (pendingGameId) {
+      // Now actually start the game
+      setFrame("https://placehold.co/160x210/000000/FFFFFF?text=Loading...");
+      setIsGameOver(false);
+      setStatus("Connecting...");
+      setServerFps(0);
+
+      setSelectedGame(pendingGameId);
+      const game = games.find((g) => g.id === pendingGameId);
+      if (game) {
+        setGameId(pendingGameId);
+        setGameDisplayName(game.display_name);
+      }
+      setGameInstanceKey((prevKey) => prevKey + 1);
+      setPendingGameId(null);
     }
-    setGameInstanceKey((prevKey) => prevKey + 1);
   };
 
   useEffect(() => {
@@ -180,7 +225,6 @@ function App() {
         onClose={() => setIsAuthModalOpen(false)}
       />
 
-      {/* Main application wrapper */}
       <div className="relative min-h-screen">
         {/* Login Overlay */}
         {!currentUser && (
@@ -213,30 +257,53 @@ function App() {
             </div>
           )}
 
-          <div className="flex flex-grow items-center justify-between w-full px-4">
-            <div className="w-64">
+          {/* Centered Game Selector if no game is selected */}
+          {!gameId ? (
+            <div className="flex flex-col items-center justify-center flex-1">
               <GameManual
                 games={games}
                 onGameSelected={handleGameSelected}
                 gameDisplayName={gameDisplayName}
                 gameId={gameId}
+                showControls={showControls}
+                manualDescription={manualDescription}
+                onStartGame={handleStartGame}
+                controlsVisible={controlsVisible}
               />
             </div>
-            <GameCanvas
-              frame={frame}
-              isGameOver={isGameOver}
-              isGameWon={isGameWon}
-              onNewGame={() => gameId && handleGameSelected(gameId)}
-            />
-            <div className="w-64">
-              <ServerStats
-                status={status}
-                statusColor={statusColor}
-                clientFps={clientFps}
-                serverFps={serverFps}
+          ) : (
+            // Main layout with sidebar once a game is selected
+            <div className="flex flex-grow items-center justify-between w-full px-4">
+              <div className="w-64">
+                <GameManual
+                  games={games}
+                  onGameSelected={handleGameSelected}
+                  gameDisplayName={gameDisplayName}
+                  gameId={gameId}
+                  showControls={showControls}
+                  manualDescription={manualDescription}
+                  onStartGame={handleStartGame}
+                  controlsVisible={controlsVisible}
+                />
+              </div>
+              <GameCanvas
+                frame={frame}
+                isGameOver={isGameOver}
+                isGameWon={isGameWon}
+                onNewGame={() => gameId && handleGameSelected(gameId)}
               />
+              <div className="w-64">
+                <ServerStats
+                  status={status}
+                  statusColor={statusColor}
+                  clientFps={clientFps}
+                  serverFps={serverFps}
+                  showFps={showFps}
+                />
+              </div>
             </div>
-          </div>
+          )}
+
           {currentUser && (
             <div className="text-center text-sm 500">
               Bath Reinforcement Learning Lab's Skill Arcade
