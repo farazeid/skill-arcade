@@ -102,6 +102,7 @@ The database schema is defined using SQLModel and consists of four main tables: 
 erDiagram
     User {
         string id PK
+        string email
         datetime time_created
         datetime time_updated
     }
