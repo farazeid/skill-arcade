@@ -424,7 +424,7 @@ cd website/frontend && touch .env
 cd website/backend
 uv sync
 # cloud-sql-proxy --address 0.0.0.0 --port 1234 $GCP_SQL_CONNECTION_NAME  # in separate terminal; for Google Cloud SQL
-alembic upgrade head
+uv run alembic upgrade head
 ```
 
 <br>
@@ -432,8 +432,8 @@ alembic upgrade head
 ### **4. Run The Backend Server**
 
 ```bash
-cd website/backend
-uv sync
+# cd website/backend
+# uv sync
 uv run uvicorn src.main:app --port 8080 --reload
 ```
 
