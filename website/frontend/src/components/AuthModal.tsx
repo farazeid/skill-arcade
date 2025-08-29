@@ -1,9 +1,5 @@
 import React, { useState } from "react";
-import { auth } from "../firebase";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-} from "firebase/auth";
+import { useAuth } from "../context/AuthContext";
 
 type AuthModalProps = {
   isOpen: boolean;
@@ -13,7 +9,7 @@ type AuthModalProps = {
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
-  const commonPassword = "brll-skill-arcade-password"; // This password must be at least 6 characters long for Firebase.
+  const { login } = useAuth();
 
   if (!isOpen) return null;
 
@@ -21,24 +17,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     e.preventDefault();
     setError("");
     try {
-      await signInWithEmailAndPassword(auth, email, commonPassword);
-      onClose(); // Close modal on successful login
-    } catch (signInError: any) {
-      // If the user does not exist, create a new account.
-      if (
-        signInError.code === "auth/user-not-found" ||
-        signInError.code === "auth/invalid-credential"
-      ) {
-        try {
-          await createUserWithEmailAndPassword(auth, email, commonPassword);
-          onClose(); // Close modal on successful sign-up
-        } catch (signUpError: any) {
-          setError(signUpError.message);
-        }
-      } else {
-        // For other sign-in errors (e.g., invalid email), display the error.
-        setError(signInError.message);
-      }
+      await login(email);
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || "Login failed");
     }
   };
 

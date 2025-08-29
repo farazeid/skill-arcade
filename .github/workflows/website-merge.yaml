@@ -63,7 +63,7 @@ jobs:
 
       - name: Prepare Environment File
         env:
-          FIREBASE_CREDENTIALS_JSON: ${{ secrets.FIREBASE_CREDENTIALS }}
+          SECRET_AUTH_JWT_SECRET: ${{ secrets.AUTH_JWT_SECRET }}
           SECRET_UPLOADER_NUM_WORKERS: ${{ secrets.UPLOADER_NUM_WORKERS }}
           SECRET_GCP_BUCKET_NAME: ${{ secrets.GCP_BUCKET_NAME }}
           SECRET_GCP_SQL_CONNECTION_NAME: ${{ secrets.GCP_SQL_CONNECTION_NAME }}
@@ -71,11 +71,8 @@ jobs:
           SECRET_GCP_SQL_PASSWORD: ${{ secrets.GCP_SQL_PASSWORD }}
           SECRET_GCP_SQL_NAME: ${{ secrets.GCP_SQL_NAME }}
         run: |
-          echo "Writing FIREBASE_CREDENTIALS to env.yaml..."
-          echo "FIREBASE_CREDENTIALS: |" > env.yaml
-          echo "$FIREBASE_CREDENTIALS_JSON" | sed 's/^/  /' >> env.yaml
-
           echo "Appending other secrets to env.yaml..."
+          echo "AUTH_JWT_SECRET: $SECRET_AUTH_JWT_SECRET" >> env.yaml
           echo "UPLOADER_NUM_WORKERS: $SECRET_UPLOADER_NUM_WORKERS" >> env.yaml
           echo "GCP_BUCKET_NAME: $SECRET_GCP_BUCKET_NAME" >> env.yaml
           echo "GCP_SQL_CONNECTION_NAME: $SECRET_GCP_SQL_CONNECTION_NAME" >> env.yaml
@@ -117,13 +114,6 @@ jobs:
           VITE_API_URL: ${{ steps.url.outputs.api_url }}
           VITE_WS_URL: ${{ steps.url.outputs.ws_url }}
           VITE_PUBLIC_WEBSITE_HOSTNAME: ${{ secrets.VITE_PUBLIC_WEBSITE_HOSTNAME }}
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
-          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
         working-directory: ./website/frontend
 
       - name: Firebase Hosting Deploy

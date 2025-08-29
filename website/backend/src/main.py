@@ -9,6 +9,7 @@ import os
 import yaml
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 import src.auth as auth
@@ -62,6 +63,22 @@ app.add_middleware(
 GAME_CONFIGS_PATH = Path("src/configs")
 
 
+class LoginRequest(BaseModel):
+    email: EmailStr
+
+
+class LoginResponse(BaseModel):
+    token: str
+
+
+@app.post("/auth/login", response_model=LoginResponse)
+async def user_session_login(payload: LoginRequest) -> LoginResponse:
+    """Email-only login. Returns a signed token for subsequent WS/API calls."""
+    async with AsyncSession(db.engine, expire_on_commit=False) as session:
+        token = await auth.issue_token_for_email(payload.email, session)
+        return LoginResponse(token=token)
+
+
 @app.get("/games")
 def list_games() -> list[dict[str, str]]:
     game_info = []
@@ -84,7 +101,7 @@ async def websocket_endpoint(
     from_public_website: bool,
     token: str | None = None,
 ) -> None:
-    """Handle a new WebSocket connection, creating as unique game for it."""
+    """Handle a new WebSocket connection, creating a unique game for it."""
 
     if not token:
         logging.error("WS: No token provided.")
@@ -94,8 +111,9 @@ async def websocket_endpoint(
     async with AsyncSession(
         db.engine,
     ) as session:
-        user: db.User | None = await auth.get_or_create_user(token, session)
-        if not user:
+        try:
+            user: db.User = await auth.get_or_create_user(token, session)
+        except ValueError:
             logging.error(f"WS: Invalid token: {token}")
             await websocket.close(code=1008)  # Policy Violation
             return

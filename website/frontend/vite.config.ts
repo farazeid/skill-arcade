@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      "/auth/login": "http://localhost:8080",
       "/games": "http://localhost:8080",
       "/ws": {
         target: "ws://localhost:8080",
