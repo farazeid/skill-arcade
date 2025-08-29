@@ -4,6 +4,7 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
+import os
 
 import yaml
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -13,7 +14,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 import src.auth as auth
 import src.db as db
 from src.game import Game, game_loop
-from src.uploader import Uploader
+from src.uploader import CloudUploader, LocalUploader
 
 
 @asynccontextmanager
@@ -24,7 +25,16 @@ async def lifespan(app: FastAPI):  # noqa: ANN201
     )
     await db.init()
     auth.init()
-    app.state.uploader = Uploader(db.engine)
+
+    if (
+        (os.getenv("GCP_SQL_CONNECTION_NAME"))
+        and (os.getenv("GCP_SQL_USER"))
+        and (os.getenv("GCP_SQL_PASSWORD"))
+        and (os.getenv("GCP_SQL_NAME"))
+    ):
+        app.state.uploader = CloudUploader(db.engine)
+    else:
+        app.state.uploader = LocalUploader(db.engine)
 
     # initialisation above
     yield  # app running
