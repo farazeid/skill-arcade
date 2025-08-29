@@ -17,7 +17,6 @@ db = [
     "aiosqlite>=0.21.0",
     "cloud-sql-python-connector[asyncpg]>=1.18.3",
     "greenlet>=3.2.3",
-    "firebase-admin>=6.9.0",
     "alembic>=1.16.4",
     "psycopg2-binary>=2.9.10",
 ]
@@ -38,6 +37,9 @@ skeleton = [
     "fastapi[standard]>=0.115.12",
     "python-dotenv>=1.1.0",
     "websockets>=15.0.1",
+    "pyjwt>=2.9.0",
+    "pydantic>=2.8.0",
+    "pyyaml>=6.0.2",
 ]
 
 [tool.pytest.ini_options]

@@ -59,6 +59,7 @@ async def init() -> None:
 
 class User(SQLModel, table=True):
     id: str = Field(primary_key=True, index=True)
+    email: str = Field(default="", index=True)
     time_created: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True),
