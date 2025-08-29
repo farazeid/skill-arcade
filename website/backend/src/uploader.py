@@ -287,7 +287,7 @@ class LocalUploader(Uploader):
         data: bytes,
         data_hash: str,
     ) -> str:
-        blob_name = f"{data_hash}.npz"
+        blob_name = f"obs/{data_hash}.npz"
         try:
             if path.exists(path.join(STORAGE_PATH, blob_name)):
                 logging.info(f"Local Storage: {blob_name} exists; skipping upload")
