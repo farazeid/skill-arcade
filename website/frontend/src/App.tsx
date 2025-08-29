@@ -84,7 +84,7 @@ function App() {
     }
 
     const connectWebSocket = async () => {
-      const idToken = await currentUser.getIdToken();
+      const idToken = currentUser.token;
       const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host =
         import.meta.env.VITE_WS_URL || `${wsProtocol}//${window.location.host}`;

@@ -23,7 +23,6 @@ https://github.com/user-attachments/assets/731d747d-4a71-43f0-9b9d-eb2c47252d8c
 - **Rich Data Collection:** Every action and observation is recorded, creating detailed episode logs that are invaluable for imitation learning and behavioural research.
 - **Asynchronous Data Pipeline:** A multi-worker asynchronous queue ensures that game performance remains high by uploading observations and database entries to the cloud without blocking the game loop.
 - **Extensible Game Environments:** Easily add new games by leveraging the [Gymnasium](https://gymnasium.farama.org/) interface. Includes classic Atari games and custom environments like the Tower of Hanoi.
-- **User Authentication:** Sign up and log in with email, with all user data managed through Firebase Authentication. Currently, authentication is password-less as the website is intended for research purposes-only.
 - **Automated Cloud Deployment:** A sophisticated CI/CD pipeline using GitHub Actions automatically builds, tests, and deploys the entire stack to Google Cloud and Firebase.
 - **Ephemeral Preview Environments:** Every pull request automatically spins up a fully functional, isolated preview environment for seamless review and testing.
 
@@ -59,29 +58,25 @@ graph TD
         ]
     end
 
-    subgraph Firebase
-        F[Firebase Authentication]
-    end
-
     subgraph GitHub
         E[GitHub Actions CI/CD]
     end
 
-    A -- Login --> F
-    F -- UID --> A
+    A -- HTTP
+          GET /auth/login --> B
 
     A <-- HTTP
           GET /games --> B
 
     A -- WebSocket
-          /ws/{game_id}?token={UID} --> B
+          /ws/{game_id}?token={token} --> B
     A -- Actions
           via WebSocket --> B
     B -- Game Frames
           via WebSocket --> A
 
     B -- Async Write
-          Episodes + Transitions --> C
+          User Auth + Episodes + Transitions --> C
     B -- Async Upload
           Game Frames --> D
 
@@ -93,7 +88,6 @@ graph TD
     style C fill:#009cfd,stroke:#000000,stroke-width:1px
     style D fill:#009cfd,stroke:#000000,stroke-width:1px
     style E fill:#a2aaad,stroke:#000000,stroke-width:1px
-    style F fill:#fda200,stroke:#000000,stroke-width:1px
 ```
 
 <br>
@@ -169,8 +163,7 @@ erDiagram
     - Google Artifact Registry
   - Frontend:
     - Firebase Hosting
-    - Firebase Authentication
-   
+
 <br>
 <br>
 <br>
@@ -340,19 +333,13 @@ NOTE: Do NOT close your terminal used in all of the previous steps yet.
    2. Click Add project.
    3. Instead of creating a new project, select your existing GCP Project ID from the dropdown list.
 
-2. Set Up Firebase Authentication
-
-   1. Navigate to the Authentication section (under Build).
-   2. Click Get started.
-   3. In the Sign-in method tab, enable Email/Password.
-
-3. Enable Firebase Hosting
+2. Enable Firebase Hosting
 
    1. Navigate to the Hosting section (under Build).
    2. Click Get started.
    3. Follow the on-screen instructions. The CLI steps can be skipped since your GitHub Action handles the deployment. The main goal here is simply to activate the Hosting service on your project.
 
-4. Register Your Web App and Find Your Config Keys
+3. Register Your Web App and Find Your Config Keys
 
    1. Go to your Project Settings by clicking the cog icon ⚙️ next to Project Overview.
    2. In the General tab, scroll down to the Your apps section.
@@ -389,38 +376,11 @@ echo ${SQL_USER}
 # GCP_BUCKET_NAME
 echo ${BUCKET_NAME}
 
-# FIREBASE_CREDENTIALS
-# Copy + paste contents of firebase-credentials.json
-
 # FIREBASE_SERVICE_ACCOUNT
 # Copy + paste contents of firebase-credentials.json
 
 # FIREBASE_PROJECT_ID
 echo ${PROJECT_ID}
-
-# VITE_FIREBASE_API_KEY
-# Copy + paste apiKey from the Firebase SDK snippet
-
-# VITE_FIREBASE_AUTH_DOMAIN
-# Copy + paste authDomain from the Firebase SDK snippet
-
-# VITE_FIREBASE_PROJECT_ID
-# Copy + paste projectId from the Firebase SDK snippet
-
-# VITE_FIREBASE_STORAGE_BUCKET
-# Copy + paste storageBucket from the Firebase SDK snippet
-
-# VITE_FIREBASE_MESSAGING_SENDER_ID
-# Copy + paste messagingSenderId from the Firebase SDK snippet
-
-# VITE_FIREBASE_APP_ID
-# Copy + paste appId from the Firebase SDK snippet
-
-# VITE_FIREBASE_MEASUREMENT_ID
-# Copy + paste measurementId from the Firebase SDK snippet
-
-# VITE_PUBLIC_WEBSITE_HOSTNAME
-# Not necessary so OK to ignore
 
 # UPLOADER_NUM_WORKERS
 # 16
@@ -441,20 +401,11 @@ cd website/backend && touch .env
 
 # UPLOADER_NUM_WORKERS="..."
 
-# FIREBASE_CREDENTIALS={ ... }
-
 cd ../..
 
 cd website/frontend && touch .env
 
 # VITE_PUBLIC_WEBSITE_HOSTNAME=...  # no quotation marks
-# VITE_FIREBASE_API_KEY="..."
-# VITE_FIREBASE_AUTH_DOMAIN="..."
-# VITE_FIREBASE_PROJECT_ID="..."
-# VITE_FIREBASE_STORAGE_BUCKET="..."
-# VITE_FIREBASE_MESSAGING_SENDER_ID="..."
-# VITE_FIREBASE_APP_ID="..."
-# VITE_FIREBASE_MEASUREMENT_ID="..."
 ```
 
 <br>
