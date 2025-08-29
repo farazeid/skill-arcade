@@ -3,7 +3,7 @@
 Skill Arcade is a web-based platform for capturing and analysing human gameplay data from classic reinforcement learning environments. It provides a real-time, low-latency interface for researchers to collect high-quality datasets of human skill, which can be used to study skill acquisition and build more capable AI agents.
 
 > [!IMPORTANT]  
-> Data collection is currently disabled; to enable, revert changes in commit `disable: writing to cloud db`:`b7723f150d1e6d74c5f0123be9d1102aec41cdc0`
+> Data collection is currently disabled; to enable, revert changes in commit [dfe983d](https://github.com/farazeid/skill-arcade/commit/dfe983dc468cd7cdbc51d56a5f9165a0a25b7240)
 
 <br>
 <br>
@@ -404,6 +404,8 @@ cd website/backend && touch .env
 # GCP_SQL_PASSWORD="..."
 
 # UPLOADER_NUM_WORKERS="..."
+
+# AUTH_JWT_SECRET="..."  # a source: https://jwtsecrets.com/
 
 cd ../..
 
