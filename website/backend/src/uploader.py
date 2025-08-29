@@ -2,9 +2,8 @@ import asyncio
 import io
 import logging
 import os
-from os import path
+import os.path as osp
 import sys
-import uuid
 from abc import ABC, abstractmethod
 
 import aiohttp
@@ -22,7 +21,7 @@ load_dotenv()
 GCP_BUCKET_NAME = os.getenv("GCP_BUCKET_NAME")
 UPLOADER_NUM_WORKERS = int(os.getenv("UPLOADER_NUM_WORKERS", "1"))
 
-STORAGE_PATH = "./storage"
+STORAGE_PATH = osp.join(".", "storage", "obs")
 
 
 class Uploader(ABC):
@@ -287,14 +286,14 @@ class LocalUploader(Uploader):
         data: bytes,
         data_hash: str,
     ) -> str:
-        blob_name = f"obs/{data_hash}.npz"
+        blob_name = f"{data_hash}.npz"
         try:
-            if path.exists(path.join(STORAGE_PATH, blob_name)):
+            if osp.exists(osp.join(STORAGE_PATH, blob_name)):
                 logging.info(f"Local Storage: {blob_name} exists; skipping upload")
             else:
                 logging.info(f"Local Storage: {blob_name} new; uploading")
 
-                with open(path.join(STORAGE_PATH, blob_name), "wb") as file:
+                with open(osp.join(STORAGE_PATH, blob_name), "wb") as file:
                     file.write(data)
 
                 logging.info(f"Local Storage: {blob_name} uploaded")
