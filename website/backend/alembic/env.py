@@ -14,17 +14,21 @@ load_dotenv()
 # access to the values within the .ini file in use.
 config = context.config
 
-if (
-    (CONNECTION_NAME := os.getenv("GCP_SQL_CONNECTION_NAME"))
-    and (DB_USER := os.getenv("GCP_SQL_USER"))
-    and (DB_PASS := os.getenv("GCP_SQL_PASSWORD"))
-    and (DB_NAME := os.getenv("GCP_SQL_NAME"))
-):
-    DB_DRIVER = "psycopg2"
-    DB_PATH = f"postgresql+{DB_DRIVER}://{DB_USER}:{DB_PASS}@localhost:1234/{DB_NAME}"
-else:  # local
-    sqlite_file_name = "db.db"
-    DB_PATH = f"sqlite:///{sqlite_file_name}"
+# if (
+#     (CONNECTION_NAME := os.getenv("GCP_SQL_CONNECTION_NAME"))
+#     and (DB_USER := os.getenv("GCP_SQL_USER"))
+#     and (DB_PASS := os.getenv("GCP_SQL_PASSWORD"))
+#     and (DB_NAME := os.getenv("GCP_SQL_NAME"))
+# ):
+#     DB_DRIVER = "psycopg2"
+#     DB_PATH = f"postgresql+{DB_DRIVER}://{DB_USER}:{DB_PASS}@localhost:1234/{DB_NAME}"
+# else:  # local
+#     sqlite_file_name = "db.db"
+#     DB_PATH = f"sqlite:///{sqlite_file_name}"
+sqlite_file_name = "tmp/db.db"
+# Ensure directory exists for local SQLite database
+os.makedirs(os.path.dirname(sqlite_file_name), exist_ok=True)
+DB_PATH = f"sqlite:///{sqlite_file_name}"
 
 config.set_main_option("sqlalchemy.url", DB_PATH)
 

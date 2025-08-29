@@ -1,10 +1,10 @@
 import asyncio
 import json
 import logging
+import os
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-import os
 
 import yaml
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -27,15 +27,16 @@ async def lifespan(app: FastAPI):  # noqa: ANN201
     await db.init()
     auth.init()
 
-    if (
-        (os.getenv("GCP_SQL_CONNECTION_NAME"))
-        and (os.getenv("GCP_SQL_USER"))
-        and (os.getenv("GCP_SQL_PASSWORD"))
-        and (os.getenv("GCP_SQL_NAME"))
-    ):
-        app.state.uploader = CloudUploader(db.engine)
-    else:
-        app.state.uploader = LocalUploader(db.engine)
+    # if (
+    #     (os.getenv("GCP_SQL_CONNECTION_NAME"))
+    #     and (os.getenv("GCP_SQL_USER"))
+    #     and (os.getenv("GCP_SQL_PASSWORD"))
+    #     and (os.getenv("GCP_SQL_NAME"))
+    # ):
+    #     app.state.uploader = CloudUploader(db.engine)
+    # else:
+    #     app.state.uploader = LocalUploader(db.engine)
+    app.state.uploader = LocalUploader(db.engine)
 
     # initialisation above
     yield  # app running

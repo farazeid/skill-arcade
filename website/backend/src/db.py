@@ -19,42 +19,53 @@ engine: AsyncEngine
 
 async def init() -> None:
     global engine, connector
-    if (
-        (connection_name := os.getenv("GCP_SQL_CONNECTION_NAME"))
-        and (db_user := os.getenv("GCP_SQL_USER"))
-        and (db_pass := os.getenv("GCP_SQL_PASSWORD"))
-        and (db_name := os.getenv("GCP_SQL_NAME"))
-    ):
-        db_driver = "asyncpg"
+    # if (
+    #     (connection_name := os.getenv("GCP_SQL_CONNECTION_NAME"))
+    #     and (db_user := os.getenv("GCP_SQL_USER"))
+    #     and (db_pass := os.getenv("GCP_SQL_PASSWORD"))
+    #     and (db_name := os.getenv("GCP_SQL_NAME"))
+    # ):
+    #     db_driver = "asyncpg"
 
-        connector = await create_async_connector()
+    #     connector = await create_async_connector()
 
-        async def getconn() -> asyncpg.Connection:
-            if connector is None:
-                raise RuntimeError("Connector is not initialized.")
+    #     async def getconn() -> asyncpg.Connection:
+    #         if connector is None:
+    #             raise RuntimeError("Connector is not initialized.")
 
-            conn = await connector.connect_async(
-                instance_connection_string=connection_name,
-                driver=db_driver,
-                user=db_user,
-                password=db_pass,
-                db=db_name,
-            )
-            return conn
+    #         conn = await connector.connect_async(
+    #             instance_connection_string=connection_name,
+    #             driver=db_driver,
+    #             user=db_user,
+    #             password=db_pass,
+    #             db=db_name,
+    #         )
+    #         return conn
 
-        engine = create_async_engine(
-            "postgresql+asyncpg://",
-            async_creator=getconn,
-            echo=False,
-        )
+    #     engine = create_async_engine(
+    #         "postgresql+asyncpg://",
+    #         async_creator=getconn,
+    #         echo=False,
+    #     )
 
-    else:  # local
-        sqlite_file_name = "db.db"
-        connection_name = f"sqlite+aiosqlite:///{sqlite_file_name}"
-        engine = create_async_engine(
-            connection_name,
-            echo=True,
-        )
+    # else:  # local
+    #     sqlite_file_name = "db.db"
+    #     connection_name = f"sqlite+aiosqlite:///{sqlite_file_name}"
+    #     engine = create_async_engine(
+    #         connection_name,
+    #         echo=True,
+    #     )
+    # Ensure local SQLite path exists (when using local dev DB)
+    sqlite_file_name = "tmp/db.db"
+    os.makedirs(os.path.dirname(sqlite_file_name), exist_ok=True)
+    connection_name = f"sqlite+aiosqlite:///{sqlite_file_name}"
+    engine = create_async_engine(
+        connection_name,
+        echo=True,
+    )
+    # Auto-create tables if they don't exist yet (useful for local dev)
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
 
 
 class User(SQLModel, table=True):
